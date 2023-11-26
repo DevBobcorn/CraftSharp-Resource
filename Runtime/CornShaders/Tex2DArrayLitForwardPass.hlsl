@@ -218,7 +218,10 @@ void LitPassFragmentSimple(
 #endif
 
     half4 color = UniversalFragmentBlinnPhong(inputData, surfaceData);
-    color.rgb = MixFog(color.rgb, inputData.fogCoord);
+    #ifndef _DISABLE_FOG
+        color.rgb = MixFog(color.rgb, inputData.fogCoord);
+    #endif
+
     color.a = OutputAlpha(color.a, IsSurfaceTypeTransparent(_Surface));
 
     outColor = color;

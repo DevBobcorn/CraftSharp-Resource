@@ -100,6 +100,7 @@ Shader "CornShader/Lit"
             #pragma shader_feature_local_fragment _ _ALPHAPREMULTIPLY_ON _ALPHAMODULATE_ON
             #pragma shader_feature_local_fragment _ _SPECGLOSSMAP _SPECULAR_COLOR
             //#pragma shader_feature_local_fragment _GLOSSINESS_FROM_BASE_ALPHA
+            #pragma shader_feature_local_fragment _ _DISABLE_FOG
 
             // -------------------------------------
             // Universal Pipeline keywords
