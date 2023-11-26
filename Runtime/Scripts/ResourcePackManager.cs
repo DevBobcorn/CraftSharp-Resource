@@ -305,19 +305,13 @@ namespace CraftSharp.Resource
             return texAtlasTable[ResourceLocation.INVALID];
         }
 
+        // atlasArrays[0]: Not mipped
+        // atlasArrays[1]: Mipped
         private readonly Texture2DArray?[] atlasArrays = new Texture2DArray?[2];
 
-        public Texture2DArray GetAtlasArray(RenderType type)
+        public Texture2DArray GetAtlasArray(bool mipped)
         {
-            return type switch
-            {
-                RenderType.CUTOUT        => atlasArrays[0]!,
-                RenderType.CUTOUT_MIPPED => atlasArrays[1]!,
-                RenderType.SOLID         => atlasArrays[0]!,
-                RenderType.TRANSLUCENT   => atlasArrays[0]!,
-
-                _                        => atlasArrays[0]!
-            };
+            return mipped ? atlasArrays[1]! : atlasArrays[0]!;
         }
 
         public const int ATLAS_SIZE = 1024;
