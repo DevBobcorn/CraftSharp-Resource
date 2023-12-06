@@ -1,10 +1,9 @@
 {
   "name": "com.devbobcorn.craftsharp-resource",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "displayName": "CraftSharp Resource",
   "description": "A Minecraft resource loader package",
   "unity": "2022.3",
-  "unityRelease": "9f1",
   "documentationUrl": "https://github.com/DevBobcorn/CornModel",
   "author": {
     "name": "DevBobcorn",

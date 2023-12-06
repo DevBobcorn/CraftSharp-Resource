@@ -90,7 +90,7 @@ namespace CraftSharp.Resource
                                         File.WriteAllText($"{targetFolder}{SP}pack.mcmeta", metaText);
                                     }
 
-                                    Debug.Log("Resources successfully downloaded and extrected.");
+                                    Debug.Log("Resources successfully downloaded and extracted.");
                                 }
 
                                 succeeded = true;
