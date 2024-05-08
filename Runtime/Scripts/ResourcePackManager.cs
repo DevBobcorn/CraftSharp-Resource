@@ -80,9 +80,9 @@ namespace CraftSharp.Resource
             GeneratedItemModels.Clear();
 
             // And clear up colormap data
-            ColormapSize = 0;
-            GrassColormapPixels = new Color32[]{ };
-            FoliageColormapPixels = new Color32[]{ };
+            World.ColormapSize = 0;
+            World.GrassColormapPixels = new Color32[]{ };
+            World.FoliageColormapPixels = new Color32[]{ };
         }
 
         public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus)
@@ -446,11 +446,6 @@ namespace CraftSharp.Resource
             return tex;
         }
 
-        public Color32[] FoliageColormapPixels { get; private set; } = { };
-        public Color32[] GrassColormapPixels { get; private set; } = { };
-
-        public int ColormapSize { get; private set; } = 0;
-
         private IEnumerator GenerateAtlas(DataLoadFlag atlasGenFlag)
         {
             texAtlasTable.Clear(); // Clear previously loaded table...
@@ -642,11 +637,11 @@ namespace CraftSharp.Resource
                 var mapTex = new Texture2D(2, 2);
                 mapTex.LoadImage(File.ReadAllBytes(texDict[FOLIAGE_COLORMAP]));
                 
-                ColormapSize = mapTex.width;
-                if (mapTex.height != ColormapSize)
-                    Debug.LogWarning($"Colormap size inconsistency: expected {ColormapSize}, got {mapTex.height}");
+                World.ColormapSize = mapTex.width;
+                if (mapTex.height != World.ColormapSize)
+                    Debug.LogWarning($"Colormap size inconsistency: expected {World.ColormapSize}, got {mapTex.height}");
 
-                FoliageColormapPixels = mapTex.GetPixels32();
+                World.FoliageColormapPixels = mapTex.GetPixels32();
             }
             
             if (texDict.ContainsKey(GRASS_COLORMAP))
@@ -655,12 +650,12 @@ namespace CraftSharp.Resource
                 var mapTex = new Texture2D(2, 2);
                 mapTex.LoadImage(File.ReadAllBytes(texDict[GRASS_COLORMAP]));
                 
-                if (mapTex.width != ColormapSize)
-                    Debug.LogWarning($"Colormap size inconsistency: expected {ColormapSize}, got {mapTex.width}");
-                if (mapTex.height != ColormapSize)
-                    Debug.LogWarning($"Colormap size inconsistency: expected {ColormapSize}, got {mapTex.height}");
+                if (mapTex.width != World.ColormapSize)
+                    Debug.LogWarning($"Colormap size inconsistency: expected {World.ColormapSize}, got {mapTex.width}");
+                if (mapTex.height != World.ColormapSize)
+                    Debug.LogWarning($"Colormap size inconsistency: expected {World.ColormapSize}, got {mapTex.height}");
 
-                GrassColormapPixels = mapTex.GetPixels32();
+                World.GrassColormapPixels = mapTex.GetPixels32();
             }
 
             atlasGenFlag.Finished = true;
