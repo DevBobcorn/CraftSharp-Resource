@@ -18,6 +18,9 @@ namespace CraftSharp.Resource
 
         private static readonly char SP = Path.DirectorySeparatorChar;
 
+        /// <summary>
+        /// Download vanilla resource files, including default translation file 'en_us.json'.
+        /// </summary>
         public static IEnumerator DownloadResource(string resVersion, Action<string> updateStatus, Action start, Action<bool> complete)
         {
             Debug.Log($"Downloading resource [{resVersion}]");
@@ -120,6 +123,12 @@ namespace CraftSharp.Resource
             complete.Invoke(succeeded);
         }
 
+        /// <summary>
+        /// Download vanilla resource files, including default translation file 'en_us.json'.
+        /// <br/>
+        /// Do note that 'en_us.json' cannot be retrieved this way since it is not present in the
+        /// asset list.
+        /// </summary>
         public static IEnumerator DownloadLanguageJson(string resVersion, string langCode, Action<string> updateStatus, Action start, Action<bool> complete)
         {
             Debug.Log($"Downloading resource [{resVersion}]");
