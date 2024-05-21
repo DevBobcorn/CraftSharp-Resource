@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace CraftSharp.Resource
@@ -24,7 +25,7 @@ namespace CraftSharp.Resource
             {
                 float value;
 
-                if (float.TryParse(src.Value.StringValue, out value))
+                if (float.TryParse(src.Value.StringValue, CultureInfo.InvariantCulture.NumberFormat, out value))
                     conditions.Add(src.Key, value);
                 else
                     Debug.LogWarning($"Invalid item model predicate value for key {{src.Key}}: {src.Value.StringValue}");
