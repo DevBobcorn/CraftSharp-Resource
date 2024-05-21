@@ -16,8 +16,10 @@ namespace CraftSharp.Resource
         public static readonly ResourceLocation FOLIAGE_COLORMAP = new("colormap/foliage");
         public static readonly ResourceLocation GRASS_COLORMAP = new("colormap/grass");
 
-        // Identifier -> Texture file path
+        // Identifier -> Texture file path (For atlas)
         public readonly Dictionary<ResourceLocation, string> TextureFileTable = new();
+        // Identifier -> Entity texture
+        public readonly Dictionary<ResourceLocation, Texture2D> EntityTexture2DTable = new();
 
         // Identidier -> Block json model file path
         public readonly Dictionary<ResourceLocation, string> BlockModelFileTable = new();
@@ -78,6 +80,7 @@ namespace CraftSharp.Resource
             RawItemModelTable.Clear();
             ItemModelTable.Clear();
             GeneratedItemModels.Clear();
+            EntityTexture2DTable.Clear();
 
             // And clear up colormap data
             World.ColormapSize = 0;
@@ -85,25 +88,24 @@ namespace CraftSharp.Resource
             World.FoliageColormapPixels = new Color32[]{ };
         }
 
-        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus)
+        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus, bool loadEntityTextures = false)
         {
             // Gather all textures and model files
             updateStatus("resource.info.gather_resource");
             foreach (var pack in packs) pack.GatherResources(this);
 
-            var atlasGenFlag = new DataLoadFlag();
+            var textureFlag = new DataLoadFlag();
 
             // Load texture atlas (on main thread)...
             updateStatus("resource.info.create_texture");
             Loom.QueueOnMainThread(() => {
-                Loom.Current.StartCoroutine(GenerateAtlas(atlasGenFlag));
+                Loom.Current.StartCoroutine(GenerateAtlas(textureFlag));
             });
             
-            while (!atlasGenFlag.Finished) { /* Wait */ }
-
-            updateStatus("resource.info.load_block_model");
-
+            while (!textureFlag.Finished) { /* Wait */ }
+            
             // Load block models...
+            updateStatus("resource.info.load_block_model");
             foreach (var blockModelId in BlockModelFileTable.Keys)
             {
                 // This model loader will load this model, its parent model(if not yet loaded),
@@ -134,6 +136,19 @@ namespace CraftSharp.Resource
                 {
                     Debug.LogWarning($"Model for {stateItem.Value}(state Id {stateItem.Key}) not loaded!");
                 }
+            }
+
+            if (loadEntityTextures)
+            {
+                textureFlag.Finished = false; // Reset this flag for reuse
+
+                // Load entity textures (on main thread)...
+                updateStatus("resource.info.load_entity_texture");
+                Loom.QueueOnMainThread(() => {
+                    Loom.Current.StartCoroutine(LoadEntityTextures(textureFlag));
+                });
+
+                while (!textureFlag.Finished) { /* Wait */ }
             }
 
             updateStatus("resource.info.resource_loaded");
@@ -314,7 +329,7 @@ namespace CraftSharp.Resource
             return mipped ? atlasArrays[1]! : atlasArrays[0]!;
         }
 
-        public const int ATLAS_SIZE = 1024;
+        public const int ATLAS_SIZE = 2048;
 
         private record TextureAnimationInfo
         {
@@ -442,6 +457,33 @@ namespace CraftSharp.Resource
             // No need to update mipmap because it'll be
             // stitched into the atlas later
             tex.Apply(false);
+
+            return tex;
+        }
+
+        public Texture2D GetMissingEntityTexture(int width, int height)
+        {
+            Texture2D tex = new(width, height)
+            {
+                filterMode = FilterMode.Point
+            };
+            Color32 magenta = Color.magenta;
+            Color32 black = Color.black;
+
+            var colors = Enumerable.Repeat(magenta, width * height).ToArray();
+
+            for (int i = 0;i < height;i++)
+            {
+                for (int j = 0;j < width;j++)
+                {
+                    if ( ( (i >> 2) + (j >> 2) ) % 2 == 0 )
+                    colors[i * width + j] = black;
+                }     
+            }
+
+            tex.SetPixels32(colors);
+            // Update texture and mipmaps
+            tex.Apply(true);
 
             return tex;
         }
@@ -659,6 +701,32 @@ namespace CraftSharp.Resource
             }
 
             atlasGenFlag.Finished = true;
+        }
+
+        private IEnumerator LoadEntityTextures(DataLoadFlag texLoadFlag)
+        {
+            EntityTexture2DTable.Clear();
+
+            // Collect entity textures
+            foreach (var tex in TextureFileTable)
+            {
+                if (tex.Key.Path.StartsWith("entity"))
+                {
+                    //Debug.Log($"Entity texture: {tex.Key}");
+                    var t = new Texture2D(2, 2)
+                    {
+                        filterMode = FilterMode.Point
+                    };
+
+                    t.LoadImage(File.ReadAllBytes(tex.Value));
+
+                    EntityTexture2DTable.Add(tex.Key, t);
+                }
+
+                yield return null;
+            }
+
+            texLoadFlag.Finished = true;
         }
     }
 }
