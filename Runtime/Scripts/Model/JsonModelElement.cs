@@ -53,7 +53,7 @@ namespace CraftSharp.Resource
                         };
                         
                         // We don't need a restriction to the value here like vanilla Minecraft...
-                        float.TryParse(rotData.Properties["angle"].StringValue, CultureInfo.InvariantCulture.NumberFormat, out elem.rotAngle);
+                        float.TryParse(rotData.Properties["angle"].StringValue, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out elem.rotAngle);
 
                         if (rotData.Properties.ContainsKey("rescale"))
                             bool.TryParse(rotData.Properties["rescale"].StringValue, out elem.rescale);
