@@ -88,7 +88,7 @@ namespace CraftSharp.Resource
             World.FoliageColormapPixels = new Color32[]{ };
         }
 
-        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus, bool loadEntityTextures = false)
+        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus, bool preloadEntityTextures = false)
         {
             // Gather all textures and model files
             updateStatus("resource.info.gather_resource");
@@ -138,14 +138,14 @@ namespace CraftSharp.Resource
                 }
             }
 
-            if (loadEntityTextures)
+            if (preloadEntityTextures) // Preload entity textures (Optional)
             {
                 textureFlag.Finished = false; // Reset this flag for reuse
 
                 // Load entity textures (on main thread)...
-                updateStatus("resource.info.load_entity_texture");
+                updateStatus("resource.info.preload_entity_texture");
                 Loom.QueueOnMainThread(() => {
-                    Loom.Current.StartCoroutine(LoadEntityTextures(textureFlag));
+                    Loom.Current.StartCoroutine(PreloadEntityTextures(textureFlag));
                 });
 
                 while (!textureFlag.Finished) { /* Wait */ }
@@ -461,7 +461,7 @@ namespace CraftSharp.Resource
             return tex;
         }
 
-        public Texture2D GetMissingEntityTexture(int width, int height)
+        private Texture2D GetMissingEntityTexture(int width, int height)
         {
             Texture2D tex = new(width, height)
             {
@@ -703,7 +703,10 @@ namespace CraftSharp.Resource
             atlasGenFlag.Finished = true;
         }
 
-        private IEnumerator LoadEntityTextures(DataLoadFlag texLoadFlag)
+        /// <summary>
+        /// Preload any texture whose id starts with "entity" into the entity texture table.
+        /// </summary>
+        private IEnumerator PreloadEntityTextures(DataLoadFlag texLoadFlag)
         {
             EntityTexture2DTable.Clear();
 
@@ -713,20 +716,61 @@ namespace CraftSharp.Resource
                 if (tex.Key.Path.StartsWith("entity"))
                 {
                     //Debug.Log($"Entity texture: {tex.Key}");
-                    var t = new Texture2D(2, 2)
-                    {
-                        filterMode = FilterMode.Point
-                    };
-
-                    t.LoadImage(File.ReadAllBytes(tex.Value));
-
-                    EntityTexture2DTable.Add(tex.Key, t);
+                    LoadEntityTextureFromPacks(tex.Key);
                 }
 
                 yield return null;
             }
 
             texLoadFlag.Finished = true;
+        }
+
+        /// <summary>
+        /// Load an entity texture from an image file in current texture file table.
+        /// </summary>
+        /// <param name="texId">Texture id</param>
+        public Texture2D LoadEntityTextureFromPacks(ResourceLocation texId, int defWidth = 32, int defHeight = 32)
+        {
+            if (EntityTexture2DTable.ContainsKey(texId))
+            {
+                return EntityTexture2DTable[texId];
+            }
+
+            Texture2D tex;
+
+            if (TextureFileTable.ContainsKey(texId))
+            {
+                tex = new Texture2D(2, 2) { filterMode = FilterMode.Point };
+                tex.LoadImage(File.ReadAllBytes(TextureFileTable[texId]));
+            }
+            else
+            {
+                Debug.LogWarning($"Unable to find entity texture {texId} from resource packs!");
+                tex = GetMissingEntityTexture(defWidth, defHeight);
+            }
+
+            // Register this texture
+            EntityTexture2DTable.Add(texId, tex);
+
+            return tex;
+        }
+
+        /// <summary>
+        /// Load an entity texture from an image file at a given URL.
+        /// </summary>
+        /// <param name="texId">Texture id</param>
+        /// <param name="url">URL to retrieve the image file from</param>
+        public Texture2D LoadEntityTextureFromUrl(ResourceLocation texId, string url)
+        {
+            var tex = new Texture2D(2, 2) { filterMode = FilterMode.Point };
+            
+            // TODO: Implement texture file downloading
+            //tex.LoadImage(bytes);
+
+            // Register this texture
+            EntityTexture2DTable.Add(texId, tex);
+
+            return tex;
         }
     }
 }
