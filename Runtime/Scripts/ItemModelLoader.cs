@@ -116,7 +116,7 @@ namespace CraftSharp.Resource
             if (manager.RawItemModelTable.ContainsKey(identifier))
                 return manager.RawItemModelTable[identifier];
             
-            var modelFilePath = manager.BlockModelFileTable.GetValueOrDefault(identifier, string.Empty);            
+            var modelFilePath = manager.ItemModelFileTable.GetValueOrDefault(identifier, string.Empty);            
             if (modelFilePath != string.Empty && File.Exists(modelFilePath))
             {
                 JsonModel model = new JsonModel();
@@ -272,7 +272,7 @@ namespace CraftSharp.Resource
             }
             else
             {
-                Debug.LogWarning($"Item model file not found: {modelFilePath}");
+                Debug.LogWarning($"Item model file not found: {identifier}");
                 return INVALID_MODEL;
             }
         }
