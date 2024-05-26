@@ -248,7 +248,7 @@ namespace CraftSharp.Resource
                                                         layerCount, GeneratedItemModelPrecision,
                                                                 GeneratedItemModelThickness, tintable).ToArray());
                                         
-                                        //Debug.Log($"Generating item model for {itemModelId} tintable: {tintable}");
+                                        //Debug.Log($"Generating item model (override) for {itemModelId} tintable: {tintable}");
                                     }
 
                                     var overrideGeometry = new ItemGeometryBuilder(rawOverrideModel).Build();
@@ -317,6 +317,8 @@ namespace CraftSharp.Resource
         {
             if (texAtlasTable.ContainsKey(identifier))
                 return texAtlasTable[identifier];
+            
+            Debug.Log($"Texture {identifier} is not in atlas!");
             
             // Return missing no texture
             return texAtlasTable[ResourceLocation.INVALID];

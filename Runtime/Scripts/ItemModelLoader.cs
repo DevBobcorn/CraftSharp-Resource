@@ -7,7 +7,7 @@ namespace CraftSharp.Resource
 {
     public class ItemModelLoader
     {
-        private const string GENERATED = "builtin/generated";
+        private const string GENERATED = "item/generated";
         private const string ENTITY    = "builtin/entity";
 
         public static JsonModel INVALID_MODEL = new JsonModel();
@@ -20,7 +20,7 @@ namespace CraftSharp.Resource
             this.manager = manager;
         }
 
-        // Cached generated models
+        // Cached generated models (layerCount, precision, thickness, useItemColor) => model
         private static Dictionary<int4, List<JsonModelElement>> generatedModels = new();
 
         public List<JsonModelElement> GetGeneratedItemModelElements(int layerCount, int precision, int thickness, bool useItemColor)
@@ -108,8 +108,11 @@ namespace CraftSharp.Resource
             return generatedModels[modelKey];
         }
 
-        // Accepts the assets path of current resource pack so that it can easily find other model
-        // files(when searching for a parent model which is not loaded yet, for example)
+        /// <summary>
+        /// Load an item model with given identifier.
+        /// <br/>
+        /// Model file table should be loaded before calling this.
+        /// </summary>
         public JsonModel LoadItemModel(ResourceLocation identifier)
         {
             // Check if this model is loaded already...
@@ -266,7 +269,9 @@ namespace CraftSharp.Resource
                     //Debug.Log("Model loaded: " + identifier);
                 }
                 else
+                {
                     Debug.LogWarning($"Trying to add model twice: {identifier}");
+                }
 
                 return model;
             }

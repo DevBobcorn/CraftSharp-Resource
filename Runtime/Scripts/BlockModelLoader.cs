@@ -15,8 +15,11 @@ namespace CraftSharp.Resource
             this.manager = manager;
         }
 
-        // Accepts the assets path of current resource pack so that it can easily find other model
-        // files(when searching for a parent model which is not loaded yet, for example)
+        /// <summary>
+        /// Load a block model with given identifier.
+        /// <br/>
+        /// Model file table should be loaded before calling this.
+        /// </summary>
         public JsonModel LoadBlockModel(ResourceLocation identifier)
         {
             // Check if this model is loaded already...
@@ -140,7 +143,9 @@ namespace CraftSharp.Resource
                     //Debug.Log("Model loaded: " + identifier);
                 }
                 else
+                {
                     Debug.LogWarning($"Trying to add model twice: {identifier}");
+                }
 
                 return model;
             }
