@@ -116,9 +116,8 @@ namespace CraftSharp.Resource
             if (manager.RawItemModelTable.ContainsKey(identifier))
                 return manager.RawItemModelTable[identifier];
             
-            var modelFilePath = manager.ItemModelFileTable[identifier];
-
-            if (File.Exists(modelFilePath))
+            var modelFilePath = manager.BlockModelFileTable.GetValueOrDefault(identifier, string.Empty);            
+            if (modelFilePath != string.Empty && File.Exists(modelFilePath))
             {
                 JsonModel model = new JsonModel();
 

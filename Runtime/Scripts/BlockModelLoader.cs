@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -22,9 +23,8 @@ namespace CraftSharp.Resource
             if (manager.BlockModelTable.ContainsKey(identifier))
                 return manager.BlockModelTable[identifier];
             
-            var modelFilePath = manager.BlockModelFileTable[identifier];
-            
-            if (File.Exists(modelFilePath))
+            var modelFilePath = manager.BlockModelFileTable.GetValueOrDefault(identifier, string.Empty);
+            if (modelFilePath != string.Empty && File.Exists(modelFilePath))
             {
                 JsonModel model = new JsonModel();
 
@@ -39,6 +39,7 @@ namespace CraftSharp.Resource
                 {
                     ResourceLocation parentIdentifier = ResourceLocation.FromString(modelData.Properties["parent"].StringValue.Replace('\\', '/'));
                     JsonModel parentModel;
+
                     if (manager.BlockModelTable.ContainsKey(parentIdentifier))
                     {
                         // This parent is already loaded, get it...
@@ -145,7 +146,7 @@ namespace CraftSharp.Resource
             }
             else
             {
-                Debug.LogWarning($"Block model file not found: {modelFilePath}");
+                Debug.LogWarning($"Block model file not found: {identifier}");
                 return INVALID_MODEL;
             }
         }

@@ -128,6 +128,7 @@ namespace CraftSharp.Resource
             BuildItemGeometries();
 
             // Perform integrity check...
+            /*
             var statesTable = BlockStatePalette.INSTANCE.StatesTable;
  
             foreach (var stateItem in statesTable)
@@ -137,6 +138,7 @@ namespace CraftSharp.Resource
                     Debug.LogWarning($"Model for {stateItem.Value}(state Id {stateItem.Key}) not loaded!");
                 }
             }
+            */
 
             if (preloadEntityTextures) // Preload entity textures (Optional)
             {
