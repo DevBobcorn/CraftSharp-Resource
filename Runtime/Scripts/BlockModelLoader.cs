@@ -84,7 +84,7 @@ namespace CraftSharp.Resource
                         TextureReference texRef;
                         if (texItem.Value.StringValue.StartsWith('#'))
                         {
-                            texRef = new TextureReference(true, texItem.Value.StringValue.Substring(1)); // Remove the leading '#'...
+                            texRef = new TextureReference(true, texItem.Value.StringValue[1..]); // Remove the leading '#'...
                         }
                         else
                         {

@@ -21,8 +21,9 @@ namespace CraftSharp.Resource
             }
 
             // Might be templates who have place holder textures...
-            // Debug.LogWarning("Texture " + texName + " not found in model");
-            return ResourceLocation.INVALID;
+            //Debug.LogWarning("Texture " + texName + " not found in model");
+            //return ResourceLocation.INVALID;
+            return ResourcePackManager.EMPTY_TEXTURE;
         }
 
         public ResourceLocation ResolveTextureRef(TextureReference texRef)

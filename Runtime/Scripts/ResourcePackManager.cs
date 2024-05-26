@@ -13,6 +13,7 @@ namespace CraftSharp.Resource
     public class ResourcePackManager
     {
         public static readonly ResourceLocation BLANK_TEXTURE = new("builtin", "blank");
+        public static readonly ResourceLocation EMPTY_TEXTURE = new("builtin", "empty");
         public static readonly ResourceLocation FOLIAGE_COLORMAP = new("colormap/foliage");
         public static readonly ResourceLocation GRASS_COLORMAP = new("colormap/grass");
 
@@ -114,6 +115,10 @@ namespace CraftSharp.Resource
             }
 
             // Load item models...
+            // NOTE: Some resource packs, like this one https://modrinth.com/resourcepack/3d-default
+            // overrides the 'item/generated' model and doesn't use 'builtin/generated', so we add a
+            // line here to handle this.
+            GeneratedItemModels.Add(new ResourceLocation("item/generated"));
             foreach (var itemModelId in ItemModelFileTable.Keys)
             {
                 // This model loader will load this model, its parent model(if not yet loaded),
@@ -431,6 +436,20 @@ namespace CraftSharp.Resource
             return tex;
         }
 
+        private Texture2D GetEmptyTexture()
+        {
+            Texture2D tex = new(16, 16);
+            Color32 empty = new(0, 0, 0, 0);
+
+            var colors = Enumerable.Repeat(empty, 16 * 16).ToArray();
+            tex.SetPixels32(colors);
+            // No need to update mipmap because it'll be
+            // stitched into the atlas later
+            tex.Apply(false);
+
+            return tex;
+        }
+
         private Texture2D GetMissingTexture()
         {
             Texture2D tex = new(16, 16);
@@ -538,15 +557,21 @@ namespace CraftSharp.Resource
                 }
             }
 
-            // Array for textures in collection, plus one blank texture and one missing texture
-            var textureInfos = new (Texture2D, TextureAnimationInfo?)[2 + textureIdSet.Count];
-            var ids = new ResourceLocation[2 + textureIdSet.Count];
+            // Array for textures in collection, plus one blank texture, one empty texture and one missing texture
+            var totalCount = 3 + textureIdSet.Count;
+            var textureInfos = new (Texture2D, TextureAnimationInfo?)[totalCount];
+            var ids = new ResourceLocation[totalCount];
 
             int count = 0;
 
             // Blank texture
             ids[count] = BLANK_TEXTURE;
             textureInfos[count] = (GetBlankTexture(), null);
+            count++;
+
+            // Empty texture
+            ids[count] = EMPTY_TEXTURE;
+            textureInfos[count] = (GetEmptyTexture(), null);
             count++;
 
             // Missing texture
@@ -577,7 +602,7 @@ namespace CraftSharp.Resource
 
                 while (true)
                 {
-                    if (lastTexIndex >= textureIdSet.Count - 1)
+                    if (lastTexIndex >= totalCount - 1)
                         break;
 
                     (var nextTex, var nextAnimInfo) = textureInfos[lastTexIndex + 1];
@@ -654,7 +679,7 @@ namespace CraftSharp.Resource
                 yield return null;
 
             }
-            while (curTexIndex < textureIdSet.Count);
+            while (curTexIndex < totalCount);
 
             var atlasArray0 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32,  2, false);
             var atlasArray1 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32,  4, false);

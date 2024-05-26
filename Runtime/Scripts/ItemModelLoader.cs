@@ -7,7 +7,7 @@ namespace CraftSharp.Resource
 {
     public class ItemModelLoader
     {
-        private const string GENERATED = "item/generated";
+        private const string GENERATED = "builtin/generated";
         private const string ENTITY    = "builtin/entity";
 
         public static JsonModel INVALID_MODEL = new JsonModel();
@@ -210,7 +210,7 @@ namespace CraftSharp.Resource
                         TextureReference texRef;
                         if (texItem.Value.StringValue.StartsWith('#'))
                         {
-                            texRef = new TextureReference(true, texItem.Value.StringValue.Substring(1)); // Remove the leading '#'...
+                            texRef = new TextureReference(true, texItem.Value.StringValue[1..]); // Remove the leading '#'...
                         }
                         else
                         {
