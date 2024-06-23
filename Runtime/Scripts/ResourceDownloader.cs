@@ -59,20 +59,19 @@ namespace CraftSharp.Resource
 
                         var jarUri = clientJarInfo.Properties["url"].StringValue;
                         // Download jar file
-                        var jardownloadTask = webClient.DownloadDataTaskAsync(jarUri);
+                        var jarDownloadTask = webClient.DownloadDataTaskAsync(jarUri);
                         updateStatus("resource.info.download_jar");
-                        while (!jardownloadTask.IsCompleted) yield return null;
-                        if (jardownloadTask.IsCompletedSuccessfully) // Jar downloaded, unzip it
+                        while (!jarDownloadTask.IsCompleted) yield return null;
+                        if (jarDownloadTask.IsCompletedSuccessfully) // Jar downloaded, unzip it
                         {
                             try
                             {
                                 var targetFolder = PathHelper.GetPackDirectoryNamed($"vanilla-{resVersion}");
-                                var zipStream = new MemoryStream(jardownloadTask.Result);
+                                var zipStream = new MemoryStream(jarDownloadTask.Result);
                                 using (var zipFile = new ZipArchive(zipStream, ZipArchiveMode.Read))
                                 {
                                     updateStatus("resource.info.extract_asset");
                                     // Extract asset files
-                                    //foreach (var entry in zipFile.Entries.Where(x => x.FullName.StartsWith("assets")))
                                     foreach (var entry in zipFile.Entries.Where(x => x.FullName.StartsWith("assets")))
                                     {
                                         var entryPath = new FileInfo($"{targetFolder}{SP}{entry.FullName}");
@@ -104,7 +103,7 @@ namespace CraftSharp.Resource
                             }
                         }
                         else
-                            Debug.LogWarning($"Failed to download client jar: {jardownloadTask.Exception}");
+                            Debug.LogWarning($"Failed to download client jar: {jarDownloadTask.Exception}");
                     }
                     else
                         Debug.LogWarning($"Failed to download version info from {versionInfoUri}.");
