@@ -100,9 +100,9 @@ Shader "CornShader/Lit"
             #pragma shader_feature_local_fragment _ _ALPHAPREMULTIPLY_ON _ALPHAMODULATE_ON
             #pragma shader_feature_local_fragment _ _SPECGLOSSMAP _SPECULAR_COLOR
             //#pragma shader_feature_local_fragment _GLOSSINESS_FROM_BASE_ALPHA
-            // Use multi_compile instead of shader_feature to avoid
-            // the variant being stripped out in builds
+            // Use multi_compile instead of shader_feature to avoid variants being stripped out in builds
             #pragma multi_compile_local_fragment _ _DISABLE_FOG
+            #pragma multi_compile_local_fragment _ _ENVIRO3_FOG
 
             // -------------------------------------
             // Universal Pipeline keywords
@@ -142,6 +142,9 @@ Shader "CornShader/Lit"
             // -------------------------------------
             // Includes
             #include "Tex2DArrayLitInput.hlsl"
+            #ifdef _ENVIRO3_FOG
+                #include_with_pragmas "Assets/Enviro 3 - Sky and Weather/Resources/Shader/Includes/FogIncludeHLSL.hlsl"
+            #endif
             #include "Tex2DArrayLitForwardPass.hlsl"
             ENDHLSL
         }

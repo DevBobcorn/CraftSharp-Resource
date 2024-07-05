@@ -92,11 +92,11 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
         inputData.vertexLighting = half3(0, 0, 0);
     #endif
 
-#if defined(DYNAMICLIGHTMAP_ON)
-    inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.dynamicLightmapUV, input.vertexSH, inputData.normalWS);
-#else
-    inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, inputData.normalWS);
-#endif
+    #if defined(DYNAMICLIGHTMAP_ON)
+        inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.dynamicLightmapUV, input.vertexSH, inputData.normalWS);
+    #else
+        inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, inputData.normalWS);
+    #endif
 
     // Mix with block light
     inputData.bakedGI = max(input.color.w, inputData.bakedGI);
@@ -148,11 +148,11 @@ Varyings LitPassVertexSimple(Attributes input)
     VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
     VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS, input.tangentOS);
 
-#if defined(_FOG_FRAGMENT)
-        half fogFactor = 0;
-#else
-        half fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
-#endif
+    #if defined(_FOG_FRAGMENT)
+            half fogFactor = 0;
+    #else
+            half fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
+    #endif
 
     //output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
     output.uv = input.texcoord + float3(GetTexUVOffset(_Time.y, input.animInfo), 0);
@@ -161,19 +161,20 @@ Varyings LitPassVertexSimple(Attributes input)
     output.positionWS.xyz = vertexInput.positionWS;
     output.positionCS = vertexInput.positionCS;
 
-#ifdef _NORMALMAP
-    half3 viewDirWS = GetWorldSpaceViewDir(vertexInput.positionWS);
-    output.normalWS = half4(normalInput.normalWS, viewDirWS.x);
-    output.tangentWS = half4(normalInput.tangentWS, viewDirWS.y);
-    output.bitangentWS = half4(normalInput.bitangentWS, viewDirWS.z);
-#else
-    output.normalWS = NormalizeNormalPerVertex(normalInput.normalWS);
-#endif
+    #ifdef _NORMALMAP
+        half3 viewDirWS = GetWorldSpaceViewDir(vertexInput.positionWS);
+        output.normalWS = half4(normalInput.normalWS, viewDirWS.x);
+        output.tangentWS = half4(normalInput.tangentWS, viewDirWS.y);
+        output.bitangentWS = half4(normalInput.bitangentWS, viewDirWS.z);
+    #else
+        output.normalWS = NormalizeNormalPerVertex(normalInput.normalWS);
+    #endif
 
-    OUTPUT_LIGHTMAP_UV(input.staticLightmapUV, unity_LightmapST, output.staticLightmapUV);
-#ifdef DYNAMICLIGHTMAP_ON
-    output.dynamicLightmapUV = input.dynamicLightmapUV.xy * unity_DynamicLightmapST.xy + unity_DynamicLightmapST.zw;
-#endif
+        OUTPUT_LIGHTMAP_UV(input.staticLightmapUV, unity_LightmapST, output.staticLightmapUV);
+    #ifdef DYNAMICLIGHTMAP_ON
+        output.dynamicLightmapUV = input.dynamicLightmapUV.xy * unity_DynamicLightmapST.xy + unity_DynamicLightmapST.zw;
+    #endif
+
     OUTPUT_SH(output.normalWS.xyz, output.vertexSH);
 
     #ifdef _ADDITIONAL_LIGHTS_VERTEX
@@ -190,6 +191,29 @@ Varyings LitPassVertexSimple(Attributes input)
     return output;
 }
 
+
+//Fragment stage. Note: Screen position passed here is not normalized (divided by w-component)
+void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 positionWS) 
+{
+	float3 foggedColor = color;
+	
+    #ifdef UnityFog
+        foggedColor = MixFog(color.rgb, fogFactor);
+    #endif
+
+    #ifdef _SURFACE_TYPE_TRANSPARENT
+        #ifdef _ENVIRO3_FOG
+            if(any(_EnviroFogParameters) > 0)
+            {
+                foggedColor.rgb = ApplyFogAndVolumetricLights(color.rgb, positionCS, positionWS, 0);
+            }
+        #endif
+    #endif
+	
+	color.rgb = foggedColor.rgb;
+}
+
+
 // Used for StandardSimpleLighting shader
 void LitPassFragmentSimple(
     Varyings input
@@ -205,31 +229,30 @@ void LitPassFragmentSimple(
     SurfaceData surfaceData;
     InitializeSimpleLitSurfaceData(input.uv, input.color.xyz, surfaceData);
 
-#ifdef LOD_FADE_CROSSFADE
-    //LODFadeCrossFade(input.positionCS);
-#endif
+    #ifdef LOD_FADE_CROSSFADE
+        //LODFadeCrossFade(input.positionCS);
+    #endif
 
-    InputData inputData;
-    InitializeInputData(input, surfaceData.normalTS, inputData);
-    SETUP_DEBUG_TEXTURE_DATA(inputData, input.uv, _BaseMap);
+        InputData inputData;
+        InitializeInputData(input, surfaceData.normalTS, inputData);
+        SETUP_DEBUG_TEXTURE_DATA(inputData, input.uv, _BaseMap);
 
-#ifdef _DBUFFER
-    ApplyDecalToSurfaceData(input.positionCS, surfaceData, inputData);
-#endif
+    #ifdef _DBUFFER
+        ApplyDecalToSurfaceData(input.positionCS, surfaceData, inputData);
+    #endif
 
     half4 color = UniversalFragmentBlinnPhong(inputData, surfaceData);
-    #ifndef _DISABLE_FOG
-        color.rgb = MixFog(color.rgb, inputData.fogCoord);
-    #endif
+
+    ApplyFog(color.rgb, inputData.fogCoord, input.positionCS, input.positionWS);
 
     color.a = OutputAlpha(color.a, IsSurfaceTypeTransparent(_Surface));
 
     outColor = color;
 
-#ifdef _WRITE_RENDERING_LAYERS
-    uint renderingLayers = GetMeshRenderingLayer();
-    outRenderingLayers = float4(EncodeMeshRenderingLayer(renderingLayers), 0, 0, 0);
-#endif
+    #ifdef _WRITE_RENDERING_LAYERS
+        uint renderingLayers = GetMeshRenderingLayer();
+        outRenderingLayers = float4(EncodeMeshRenderingLayer(renderingLayers), 0, 0, 0);
+    #endif
 }
 
 #endif
