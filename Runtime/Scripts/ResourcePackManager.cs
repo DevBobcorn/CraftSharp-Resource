@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -384,7 +385,7 @@ namespace CraftSharp.Resource
                     float frameInterval;
 
                     if (animJson.Properties.ContainsKey("frametime")) // Use specified frame interval
-                        frameInterval = int.Parse(animJson.Properties["frametime"].StringValue) * 0.05F;
+                        frameInterval = float.Parse(animJson.Properties["frametime"].StringValue, CultureInfo.InvariantCulture.NumberFormat) * 0.05F;
                     else // Use default frame interval
                         frameInterval = 0.05F;
                     
