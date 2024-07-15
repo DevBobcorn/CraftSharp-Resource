@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Unity.Mathematics;
@@ -104,7 +105,7 @@ namespace CraftSharp.Resource
                 Loom.Current.StartCoroutine(GenerateAtlas(textureFlag));
             });
             
-            while (!textureFlag.Finished) { /* Wait */ }
+            while (!textureFlag.Finished) { Thread.Sleep(100); }
             
             // Load block models...
             updateStatus("resource.info.load_block_model");
@@ -156,7 +157,7 @@ namespace CraftSharp.Resource
                     Loom.Current.StartCoroutine(PreloadEntityTextures(textureFlag));
                 });
 
-                while (!textureFlag.Finished) { /* Wait */ }
+                while (!textureFlag.Finished) { Thread.Sleep(100); }
             }
 
             updateStatus("resource.info.resource_loaded");
@@ -601,11 +602,8 @@ namespace CraftSharp.Resource
                 // First count all the textures to be stitched onto this atlas
                 int lastTexIndex = curTexIndex - 1, curVolume = 0; // lastTexIndex is inclusive
 
-                while (true)
+                while (lastTexIndex < totalCount - 1)
                 {
-                    if (lastTexIndex >= totalCount - 1)
-                        break;
-
                     (var nextTex, var nextAnimInfo) = textureInfos[lastTexIndex + 1];
                     curVolume += nextTex.width * nextTex.height;
 
