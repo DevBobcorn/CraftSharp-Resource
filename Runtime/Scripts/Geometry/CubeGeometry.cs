@@ -8,25 +8,24 @@ namespace CraftSharp.Resource
     {
         private static readonly Vector4 FULL = new(0, 0, 1, 1);
 
-        public static void Build(ref VertexBuffer buffer, float3 posOffset, ResourceLocation tex, int cullFlags, float3 cubeColor)
+        public static int GetVertexCount(int cullFlags)
         {
+            return VertexCountMap[cullFlags];
+        }
+
+        public static void Build(ref VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation tex, int cullFlags, float3 cubeColor)
+        {
+            var startOffset = vertOffset;
+
             // Unity                   Minecraft            Top Quad Vertices
             //  A +Z (East)             A +X (East)          v0---v1
             //  |                       |                    |     |
             //  *---> +X (South)        *---> +Z (South)     v2---v3
 
-            int vertOffset = buffer.vert.Length;
-            int newLength = vertOffset + ArraySizeMap[cullFlags];
-
-            var verts = new float3[newLength];
-            var txuvs = new float3[newLength];
-            var uvans = new float4[newLength];
-            var tints = new float4[newLength];
-
-            buffer.vert.CopyTo(verts, 0);
-            buffer.txuv.CopyTo(txuvs, 0);
-            buffer.uvan.CopyTo(uvans, 0);
-            buffer.tint.CopyTo(tints, 0);
+            var verts = buffer.vert;
+            var txuvs = buffer.txuv;
+            var uvans = buffer.uvan;
+            var tints = buffer.tint;
 
             var (fullUVs, anim) = ResourcePackManager.Instance.GetUVs(tex, FULL, 0);
 
@@ -98,23 +97,18 @@ namespace CraftSharp.Resource
                 // Not necessary vertOffset += 4;
             }
 
-            for (int i = buffer.vert.Length; i < verts.Length; i++) // For each new vertex in the mesh
+            for (uint i = startOffset; i < vertOffset; i++) // For each new vertex in the mesh
             {
                 // Calculate vertex lighting
                 tints[i] = new float4(cubeColor, 0F);
                 // Offset vertices
                 verts[i] = verts[i] + posOffset;
             }
-
-            buffer.vert = verts;
-            buffer.txuv = txuvs;
-            buffer.uvan = uvans;
-            buffer.tint = tints;
         }
 
-        public static readonly Dictionary<int, int> ArraySizeMap = CreateArraySizeMap();
+        public static readonly Dictionary<int, int> VertexCountMap = CreateVertexCountMap();
 
-        private static Dictionary<int, int> CreateArraySizeMap()
+        private static Dictionary<int, int> CreateVertexCountMap()
         {
             Dictionary<int, int> sizeMap = new();
 

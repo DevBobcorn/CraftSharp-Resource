@@ -26,7 +26,7 @@ namespace CraftSharp.Resource
         // Cache for array sizes, mapping cull flags to corresponding vertex array sizes
         private readonly ConcurrentDictionary<int, int> sizeCache = new();
 
-        private int CalculateArraySize(int cullFlags)
+        private int CalculateVertexCount(int cullFlags)
         {
             int vertexCount = vertexArrs[CullDir.NONE].Length;
 
@@ -159,24 +159,24 @@ namespace CraftSharp.Resource
             return math.lerp(ao, 1F, vertLight);
         }
 
-        public void Build(ref VertexBuffer buffer, float3 posOffset, int cullFlags,
-                bool[] ao, float[] blockLights, float3 blockColor)
+        public int GetVertexCount(int cullFlags)
         {
             // Compute value if absent
-            int vertexCount = buffer.vert.Length + (sizeCache.ContainsKey(cullFlags) ? sizeCache[cullFlags] :
-                    (sizeCache[cullFlags] = CalculateArraySize(cullFlags)));
+            return sizeCache.ContainsKey(cullFlags) ? sizeCache[cullFlags] :
+                    (sizeCache[cullFlags] = CalculateVertexCount(cullFlags));
+        }
 
-            var verts = new float3[vertexCount];
-            var txuvs = new float3[vertexCount];
-            var uvans = new float4[vertexCount];
-            var tints = new float4[vertexCount];
+        /// <summary>
+        /// Build block vertices into the given vertex buffer. Returns vertex offset after building.
+        /// </summary>
+        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, bool[] ao, float[] blockLights, float3 blockColor)
+        {
+            var verts = buffer.vert;
+            var txuvs = buffer.txuv;
+            var uvans = buffer.uvan;
+            var tints = buffer.tint;
 
-            buffer.vert.CopyTo(verts, 0);
-            buffer.txuv.CopyTo(txuvs, 0);
-            buffer.uvan.CopyTo(uvans, 0);
-            buffer.tint.CopyTo(tints, 0);
-
-            uint i, vertOffset = (uint)buffer.vert.Length;
+            uint i;
 
             if (vertexArrs[CullDir.NONE].Length > 0)
             {
@@ -185,12 +185,12 @@ namespace CraftSharp.Resource
                     verts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
                     float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
                     //float vertLight = GetVertexLightFromFaceLights(CullDir.NONE, blockLights);
-                    float3 vertColor = (tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR);
+                    float3 vertColor = tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR;
                     tints[i + vertOffset] = new float4(vertColor, vertLight);
                 }
                 uvArrs[CullDir.NONE].CopyTo(txuvs, vertOffset);
                 uvAnimArrs[CullDir.NONE].CopyTo(uvans, vertOffset);
-                vertOffset += (uint)vertexArrs[CullDir.NONE].Length;
+                vertOffset += (uint) vertexArrs[CullDir.NONE].Length;
             }
 
             for (int dirIdx = 0;dirIdx < 6;dirIdx++)
@@ -212,106 +212,35 @@ namespace CraftSharp.Resource
                     }
                     uvArrs[dir].CopyTo(txuvs, vertOffset);
                     uvAnimArrs[dir].CopyTo(uvans, vertOffset);
-                    vertOffset += (uint)vertexArrs[dir].Length;
+                    vertOffset += (uint) vertexArrs[dir].Length;
                 }
             }
-
-            buffer.vert = verts;
-            buffer.txuv = txuvs;
-            buffer.uvan = uvans;
-            buffer.tint = tints;
         }
 
-        public void BuildWithCollider(ref VertexBuffer buffer, ref float3[] colliderVerts, float3 posOffset,
+        public void BuildWithCollider(VertexBuffer buffer, ref uint vertOffset, float3[] cVerts, ref uint cVertOffset, float3 posOffset,
                 int cullFlags, bool[] ao, float[] blockLights, float3 blockColor)
         {
-            // Compute value if absent
-            int extraVertCount  = sizeCache.ContainsKey(cullFlags) ? sizeCache[cullFlags] :
-                    (sizeCache[cullFlags] = CalculateArraySize(cullFlags));
-            int vVertexCount = buffer.vert.Length + extraVertCount;
+            var startOffset = vertOffset;
 
-            var verts = new float3[vVertexCount];
-            var txuvs = new float3[vVertexCount];
-            var uvans = new float4[vVertexCount];
-            var tints = new float4[vVertexCount];
+            Build(buffer, ref vertOffset, posOffset, cullFlags, ao, blockLights, blockColor);
 
-            buffer.vert.CopyTo(verts, 0);
-            buffer.txuv.CopyTo(txuvs, 0);
-            buffer.uvan.CopyTo(uvans, 0);
-            buffer.tint.CopyTo(tints, 0);
-
-            var cVerts = new float3[colliderVerts.Length + extraVertCount];
-            colliderVerts.CopyTo(cVerts, 0);
-
-            uint i, vertOffset = (uint)buffer.vert.Length;
-            uint offsetAtStart = vertOffset;
-
-            if (vertexArrs[CullDir.NONE].Length > 0)
-            {
-                for (i = 0U;i < vertexArrs[CullDir.NONE].Length;i++)
-                {
-                    verts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
-                    float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
-                    //float vertLight = GetVertexLightFromFaceLights(CullDir.NONE, blockLights);
-                    float3 vertColor = (tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR);
-                    tints[i + vertOffset] = new float4(vertColor, vertLight);
-                }
-                uvArrs[CullDir.NONE].CopyTo(txuvs, vertOffset);
-                uvAnimArrs[CullDir.NONE].CopyTo(uvans, vertOffset);
-                vertOffset += (uint)vertexArrs[CullDir.NONE].Length;
-            }
-
-            for (int dirIdx = 0;dirIdx < 6;dirIdx++)
-            {
-                var dir = (CullDir) (dirIdx + 1);
-
-                if ((cullFlags & (1 << dirIdx)) != 0 && vertexArrs[dir].Length > 0)
-                {
-                    var cornersAO = GetDirCornersAO(dir, ao);
-
-                    for (i = 0U;i < vertexArrs[dir].Length;i++)
-                    {
-                        verts[i + vertOffset] = vertexArrs[dir][i] + posOffset;
-                        float vertLight = GetVertexLightFromCornerLights(vertexArrs[dir][i], blockLights);
-                        //float vertLight = GetVertexLightFromFaceLights(dir, blockLights);
-                        float3 vertColor = (tintIndexArrs[dir][i] >= 0 ? blockColor : DEFAULT_COLOR)
-                                * SampleVertexAO(dir, cornersAO, vertexArrs[dir][i], vertLight);
-                        tints[i + vertOffset] = new float4(vertColor, vertLight);
-                    }
-                    uvArrs[dir].CopyTo(txuvs, vertOffset);
-                    uvAnimArrs[dir].CopyTo(uvans, vertOffset);
-                    vertOffset += (uint)vertexArrs[dir].Length;
-                }
-            }
+            var newVertexCount = vertOffset - startOffset;
 
             // Copy from visual buffer to collider
-            Array.Copy(verts, offsetAtStart, cVerts, colliderVerts.Length, extraVertCount);
+            Array.Copy(buffer.vert, startOffset, cVerts, cVertOffset, newVertexCount);
 
-            buffer.vert = verts;
-            buffer.txuv = txuvs;
-            buffer.uvan = uvans;
-            buffer.tint = tints;
-
-            colliderVerts = cVerts;
+            cVertOffset += newVertexCount;
         }
 
-        public void BuildCollider(ref float3[] colliderVerts, float3 posOffset, int cullFlags)
+        public void BuildCollider(float3[] cVerts, ref uint vertOffset, float3 posOffset, int cullFlags)
         {
-            // Compute value if absent
-            int vertexCount = colliderVerts.Length + ((sizeCache.ContainsKey(cullFlags)) ? sizeCache[cullFlags] :
-                    (sizeCache[cullFlags] = CalculateArraySize(cullFlags)));
-
-            var verts = new float3[vertexCount];
-
-            colliderVerts.CopyTo(verts, 0);
-
-            uint i, vertOffset = (uint)colliderVerts.Length;
+            uint i;
 
             if (vertexArrs[CullDir.NONE].Length > 0)
             {
                 for (i = 0U;i < vertexArrs[CullDir.NONE].Length;i++)
-                    verts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
-                vertOffset += (uint)vertexArrs[CullDir.NONE].Length;
+                    cVerts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
+                vertOffset += (uint) vertexArrs[CullDir.NONE].Length;
             }
 
             for (int dirIdx = 0;dirIdx < 6;dirIdx++)
@@ -321,12 +250,10 @@ namespace CraftSharp.Resource
                 if ((cullFlags & (1 << dirIdx)) != 0 && vertexArrs[dir].Length > 0)
                 {
                     for (i = 0U;i < vertexArrs[dir].Length;i++)
-                        verts[i + vertOffset] = vertexArrs[dir][i] + posOffset;
-                    vertOffset += (uint)vertexArrs[dir].Length;
+                        cVerts[i + vertOffset] = vertexArrs[dir][i] + posOffset;
+                    vertOffset += (uint) vertexArrs[dir].Length;
                 }
             }
-
-            colliderVerts = verts;
         }
     }
 }

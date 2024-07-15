@@ -23,5 +23,13 @@ namespace CraftSharp.Resource
         /// Tint color / block light array
         /// </summary>
         public float4[] tint = { };
+
+        public VertexBuffer(int vertexCount)
+        {
+            vert = new float3[vertexCount];
+            txuv = new float3[vertexCount];
+            uvan = new float4[vertexCount];
+            tint = new float4[vertexCount];
+        }
     }
 }

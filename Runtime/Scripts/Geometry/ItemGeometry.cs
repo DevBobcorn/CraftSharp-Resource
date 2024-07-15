@@ -21,21 +21,19 @@ namespace CraftSharp.Resource
             this.DisplayTransforms = displayTransforms;
         }
 
-        public void Build(ref VertexBuffer buffer, float3 posOffset, float3[] itemTints)
+        public int GetVertexCount()
         {
-            int vertexCount = buffer.vert.Length + vertexArr.Length;
+            return vertexArr.Length;
+        }
 
-            var verts = new float3[vertexCount];
-            var txuvs = new float3[vertexCount];
-            var uvans = new float4[vertexCount];
-            var tints = new float4[vertexCount];
+        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, float3[] itemTints)
+        {
+            var verts = buffer.vert;
+            var txuvs = buffer.txuv;
+            var uvans = buffer.uvan;
+            var tints = buffer.tint;
 
-            buffer.vert.CopyTo(verts, 0);
-            buffer.txuv.CopyTo(txuvs, 0);
-            buffer.uvan.CopyTo(uvans, 0);
-            buffer.tint.CopyTo(tints, 0);
-
-            uint i, vertOffset = (uint)buffer.vert.Length;
+            uint i;
 
             if (vertexArr.Length > 0)
             {
@@ -49,10 +47,7 @@ namespace CraftSharp.Resource
                 uvAnimArr.CopyTo(uvans, vertOffset);
             }
 
-            buffer.vert = verts;
-            buffer.txuv = txuvs;
-            buffer.uvan = uvans;
-            buffer.tint = tints;
+            vertOffset += (uint) vertexArr.Length;
         }
     }
 }
