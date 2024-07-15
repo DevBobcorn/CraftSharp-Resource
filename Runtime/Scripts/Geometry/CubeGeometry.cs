@@ -13,7 +13,7 @@ namespace CraftSharp.Resource
             return VertexCountMap[cullFlags];
         }
 
-        public static void Build(ref VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation tex, int cullFlags, float3 cubeColor)
+        public static void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation tex, int cullFlags, float3 cubeColor)
         {
             var startOffset = vertOffset;
 
