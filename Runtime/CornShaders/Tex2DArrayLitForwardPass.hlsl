@@ -197,16 +197,16 @@ void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 pos
 {
 	float3 foggedColor = color;
 	
-    #ifdef UnityFog
+    #if !defined(_DISABLE_FOG) && !defined(_ENVIRO3_FOG)
         foggedColor = MixFog(color.rgb, fogFactor);
     #endif
 
     #ifdef _SURFACE_TYPE_TRANSPARENT
-        #ifdef _ENVIRO3_FOG
-            if(any(_EnviroFogParameters) > 0)
-            {
-                foggedColor.rgb = ApplyFogAndVolumetricLights(color.rgb, positionCS, positionWS, 0);
-            }
+    #if !defined(_DISABLE_FOG) && defined(_ENVIRO3_FOG)
+        if(any(_EnviroFogParameters) > 0)
+        {
+            foggedColor.rgb = ApplyFogAndVolumetricLights(color.rgb, positionCS, positionWS, 0);
+        }
         #endif
     #endif
 	
