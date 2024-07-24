@@ -15,12 +15,12 @@ namespace CraftSharp.Resource
         public float3[] txuv = { };
 
         /// <summary>
-        /// Texture uv animation array (frame count, frame interval, frame offset)
+        /// Texture uv animation array (frame count, frame interval, frame size, frame per row)
         /// </summary>
         public float4[] uvan = { };
 
         /// <summary>
-        /// Tint color / block light array
+        /// Extra vertex data array (tint r, tint g, tint b, (block light) + )
         /// </summary>
         public float4[] tint = { };
 

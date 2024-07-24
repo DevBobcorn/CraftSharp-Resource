@@ -56,6 +56,45 @@ struct Varyings
     UNITY_VERTEX_OUTPUT_STEREO
 };
 
+///////////////////////////////////////////////////////////////////////////////
+//                  Vertex and Fragment functions                            //
+///////////////////////////////////////////////////////////////////////////////
+#include "GetTexUVOffset.cginc"
+#include "UnpackFloats.cginc"
+
+void UnpackFloats_0F_15F(float Packed, out float ValA, out float ValB)
+{
+    int packedInt = (int) Packed;
+
+    int aInt = packedInt & 0xFFF; // Lower 12 bits
+    int bInt = packedInt >> 12;   // Higher 12 bits
+
+    // Map values from [1, 4095] to [0F, 15F]: 15F * (val / 4095F)
+    ValA = aInt / 273.0;
+    ValB = bInt / 273.0;
+}
+
+//Fragment stage. Note: Screen position passed here is not normalized (divided by w-component)
+void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 positionWS) 
+{
+	float3 foggedColor = color;
+	
+    #if !defined(_DISABLE_FOG) && !defined(_ENVIRO3_FOG)
+        foggedColor = MixFog(color.rgb, fogFactor);
+    #endif
+
+    #ifdef _SURFACE_TYPE_TRANSPARENT
+    #if !defined(_DISABLE_FOG) && defined(_ENVIRO3_FOG)
+        if(any(_EnviroFogParameters) > 0)
+        {
+            foggedColor.rgb = ApplyFogAndVolumetricLights(color.rgb, positionCS, positionWS, 0);
+        }
+        #endif
+    #endif
+	
+	color.rgb = foggedColor.rgb;
+}
+
 void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData)
 {
     inputData = (InputData)0;
@@ -98,8 +137,12 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
         inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, inputData.normalWS);
     #endif
 
+    // Unpack vertex light and thickness
+    float vertLight, thickness;
+    UnpackFloats_0F_15F_float(input.color.w, vertLight, thickness);
+
     // Mix with block light
-    inputData.bakedGI = max(input.color.w, inputData.bakedGI);
+    inputData.bakedGI = max(pow(vertLight * 0.1F, 1.5F), inputData.bakedGI);
 
     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
     inputData.shadowMask = SAMPLE_SHADOWMASK(input.staticLightmapUV);
@@ -114,26 +157,6 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
     inputData.vertexSH = input.vertexSH;
     #endif
     #endif
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//                  Vertex and Fragment functions                            //
-///////////////////////////////////////////////////////////////////////////////
-float2 GetTexUVOffset(float AnimTime, float4 AnimInfo)
-{
-    uint frameCount = round(AnimInfo.x);
-
-    if (frameCount > 1) {
-        float frameInterval = AnimInfo.y;
-
-        float cycleTime = fmod(AnimTime, frameInterval * frameCount);
-        uint curFrame = floor(cycleTime / frameInterval);
-        uint framePerRow = round(AnimInfo.w);
-        
-        return float2((curFrame % framePerRow) * AnimInfo.z, (curFrame / framePerRow) * -AnimInfo.z);
-    } else {
-        return float2(0, 0);
-    }
 }
 
 // Used in Standard (Simple Lighting) shader
@@ -154,8 +177,9 @@ Varyings LitPassVertexSimple(Attributes input)
             half fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
     #endif
 
-    //output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-    output.uv = input.texcoord + float3(GetTexUVOffset(_Time.y, input.animInfo), 0);
+    float2 uvOffset;
+    GetTexUVOffset_float(_Time.y, input.animInfo, uvOffset);
+    output.uv = input.texcoord + float3(uvOffset, 0);
     output.color = input.color;
 
     output.positionWS.xyz = vertexInput.positionWS;
@@ -190,29 +214,6 @@ Varyings LitPassVertexSimple(Attributes input)
 
     return output;
 }
-
-
-//Fragment stage. Note: Screen position passed here is not normalized (divided by w-component)
-void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 positionWS) 
-{
-	float3 foggedColor = color;
-	
-    #if !defined(_DISABLE_FOG) && !defined(_ENVIRO3_FOG)
-        foggedColor = MixFog(color.rgb, fogFactor);
-    #endif
-
-    #ifdef _SURFACE_TYPE_TRANSPARENT
-    #if !defined(_DISABLE_FOG) && defined(_ENVIRO3_FOG)
-        if(any(_EnviroFogParameters) > 0)
-        {
-            foggedColor.rgb = ApplyFogAndVolumetricLights(color.rgb, positionCS, positionWS, 0);
-        }
-        #endif
-    #endif
-	
-	color.rgb = foggedColor.rgb;
-}
-
 
 // Used for StandardSimpleLighting shader
 void LitPassFragmentSimple(

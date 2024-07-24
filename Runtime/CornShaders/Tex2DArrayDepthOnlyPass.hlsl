@@ -26,22 +26,7 @@ struct Varyings
 ///////////////////////////////////////////////////////////////////////////////
 //                  Vertex and Fragment functions                            //
 ///////////////////////////////////////////////////////////////////////////////
-float2 GetTexUVOffset(float AnimTime, float4 AnimInfo)
-{
-    uint frameCount = round(AnimInfo.x);
-
-    if (frameCount > 1) {
-        float frameInterval = AnimInfo.y;
-
-        float cycleTime = fmod(AnimTime, frameInterval * frameCount);
-        uint curFrame = floor(cycleTime / frameInterval);
-        uint framePerRow = round(AnimInfo.w);
-        
-        return float2((curFrame % framePerRow) * AnimInfo.z, (curFrame / framePerRow) * -AnimInfo.z);
-    } else {
-        return float2(0, 0);
-    }
-}
+#include "GetTexUVOffset.cginc"
 
 Varyings DepthOnlyVertex(Attributes input)
 {
@@ -49,8 +34,9 @@ Varyings DepthOnlyVertex(Attributes input)
     UNITY_SETUP_INSTANCE_ID(input);
     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-    //output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-    output.uv = input.texcoord + float3(GetTexUVOffset(_Time.y, input.animInfo), 0);
+    float2 uvOffset;
+    GetTexUVOffset_float(_Time.y, input.animInfo, uvOffset);
+    output.uv = input.texcoord + float3(uvOffset, 0);
     output.positionCS = TransformObjectToHClip(input.position.xyz);
     return output;
 }

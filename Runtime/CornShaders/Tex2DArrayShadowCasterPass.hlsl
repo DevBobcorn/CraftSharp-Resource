@@ -18,6 +18,8 @@ struct Attributes
     float4 positionOS   : POSITION;
     float3 normalOS     : NORMAL;
     float3 texcoord     : TEXCOORD0;
+    float4 animInfo     : TEXCOORD3;
+    
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -26,6 +28,11 @@ struct Varyings
     float3 uv           : TEXCOORD0;
     float4 positionCS   : SV_POSITION;
 };
+
+///////////////////////////////////////////////////////////////////////////////
+//                  Vertex and Fragment functions                            //
+///////////////////////////////////////////////////////////////////////////////
+#include "GetTexUVOffset.cginc"
 
 float4 GetShadowPositionHClip(Attributes input)
 {
@@ -54,8 +61,9 @@ Varyings ShadowPassVertex(Attributes input)
     Varyings output;
     UNITY_SETUP_INSTANCE_ID(input);
 
-    //output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-    output.uv = input.texcoord;
+    float2 uvOffset;
+    GetTexUVOffset_float(_Time.y, input.animInfo, uvOffset);
+    output.uv = input.texcoord + float3(uvOffset, 0);
     output.positionCS = GetShadowPositionHClip(input);
     return output;
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace CraftSharp.Resource
 {
@@ -56,6 +57,9 @@ namespace CraftSharp.Resource
             return math.max(neighbor, faceLights[6]);
         }
 
+        /// <summary>
+        /// Light value range: [0, 15]
+        /// </summary>
         public static float GetVertexLightFromCornerLights(float3 vertPosInBlock, float[] cornerLights)
         {
             // Enhanced sampling: Accepts averaged light values of 8 corners
@@ -64,25 +68,34 @@ namespace CraftSharp.Resource
             float x0z1 = math.lerp(cornerLights[2], cornerLights[6], vertPosInBlock.y);
             float x1z1 = math.lerp(cornerLights[3], cornerLights[7], vertPosInBlock.y);
 
-            var interpolated = math.lerp(
+            return math.lerp(
                     math.lerp(x0z0, x0z1, vertPosInBlock.x),
                     math.lerp(x1z0, x1z1, vertPosInBlock.x),
                     vertPosInBlock.z
             );
+        }
 
-            return interpolated * interpolated;
+        private float GetCornerThickness(bool side1, bool corner, bool side2)
+        {
+            return math.saturate((side1 ? 0F : 0.5F) - (corner ? 0F : 0.5F) - (side2 ? 0F : 0.5F));
         }
 
         private float GetCornerAO(bool side1, bool corner, bool side2)
         {
-            return 1F - (side1 ? 0.5F : 0F) - (corner ? 0.5F : 0F) - (side2 ? 0.5F : 0F);
-            //return 1F - (side1 ? 0.33F : 0F) - (corner ? 0.33F : 0F) - (side2 ? 0.33F : 0F);
-            //return 1F - (side1 ? 0.2F : 0F) - (corner ? 0.2F : 0F) - (side2 ? 0.2F : 0F);
+            return math.saturate(1F - (side1 ? 0.5F : 0F) - (corner ? 0.5F : 0F) - (side2 ? 0.5F : 0F));
         }
 
-        // tl tm tr
-        // ml mm mr
-        // bl bm br
+        private float[] GetCornersThickness(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br)
+        {
+            return new float[]
+            {
+                GetCornerThickness(ml, tl, tm), // tl
+                GetCornerThickness(tm, tr, mr), // tr
+                GetCornerThickness(bm, bl, ml), // bl
+                GetCornerThickness(mr, br, bm), // br
+            };
+        }
+
         private float[] GetCornersAO(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br)
         {
             return new float[]
@@ -156,7 +169,20 @@ namespace CraftSharp.Resource
                      math.lerp(cornersAO[3], cornersAO[1], AOCoord.y), AOCoord.x);
             
             // Reduce ambient occlusion of lit vertices
-            return math.lerp(ao, 1F, vertLight);
+            return math.lerp(ao, 1F, vertLight / 15F);
+        }
+
+        private float PackFloats_0F_15F(float a, float b)
+        {
+            // A float number can store an integer with a value of up to 16777216 (2^24)
+            // without losing precision(See https://stackoverflow.com/a/3793950), so we
+            // use a 12-bit unsigned integer(from 0 to 4095) to store each float value.
+
+            // Map values from [0F, 15F] to [1, 4095]: 4095F * (val / 15F)
+            int aInt = math.clamp(Mathf.RoundToInt(a * 273F), 1, 4095);
+            int bInt = math.clamp(Mathf.RoundToInt(b * 273F), 1, 4095);
+
+            return (bInt << 12) | aInt;
         }
 
         public int GetVertexCount(int cullFlags)
@@ -184,9 +210,10 @@ namespace CraftSharp.Resource
                 {
                     verts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
                     float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
-                    //float vertLight = GetVertexLightFromFaceLights(CullDir.NONE, blockLights);
+                    float thickness = 1.5F;
+                    float packedVal = PackFloats_0F_15F(vertLight, thickness);
                     float3 vertColor = tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR;
-                    tints[i + vertOffset] = new float4(vertColor, vertLight);
+                    tints[i + vertOffset] = new float4(vertColor, packedVal);
                 }
                 uvArrs[CullDir.NONE].CopyTo(txuvs, vertOffset);
                 uvAnimArrs[CullDir.NONE].CopyTo(uvans, vertOffset);
@@ -205,10 +232,11 @@ namespace CraftSharp.Resource
                     {
                         verts[i + vertOffset] = vertexArrs[dir][i] + posOffset;
                         float vertLight = GetVertexLightFromCornerLights(vertexArrs[dir][i], blockLights);
-                        //float vertLight = GetVertexLightFromFaceLights(dir, blockLights);
+                        float thickness = 1.5F;
+                        float packedVal = PackFloats_0F_15F(vertLight, thickness);
                         float3 vertColor = (tintIndexArrs[dir][i] >= 0 ? blockColor : DEFAULT_COLOR)
                                 * SampleVertexAO(dir, cornersAO, vertexArrs[dir][i], vertLight);
-                        tints[i + vertOffset] = new float4(vertColor, vertLight);
+                        tints[i + vertOffset] = new float4(vertColor, packedVal);
                     }
                     uvArrs[dir].CopyTo(txuvs, vertOffset);
                     uvAnimArrs[dir].CopyTo(uvans, vertOffset);
