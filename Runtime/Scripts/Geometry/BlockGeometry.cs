@@ -75,27 +75,28 @@ namespace CraftSharp.Resource
             );
         }
 
-        private float GetCornerThickness(bool side1, bool corner, bool side2)
-        {
-            return math.saturate((side1 ? 0F : 0.5F) - (corner ? 0F : 0.5F) - (side2 ? 0F : 0.5F));
-        }
-
         private float GetCornerAO(bool side1, bool corner, bool side2)
         {
             return math.saturate(1F - (side1 ? 0.5F : 0F) - (corner ? 0.5F : 0F) - (side2 ? 0.5F : 0F));
         }
 
+        /// <summary>
+        /// Get 4 thickness values for each corner of a given face
+        /// </summary>
         private float[] GetCornersThickness(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br)
         {
             return new float[]
             {
-                GetCornerThickness(ml, tl, tm), // tl
-                GetCornerThickness(tm, tr, mr), // tr
-                GetCornerThickness(bm, bl, ml), // bl
-                GetCornerThickness(mr, br, bm), // br
+                GetCornerAO(!ml, !tl, !tm), // tl
+                GetCornerAO(!tm, !tr, !mr), // tr
+                GetCornerAO(!bm, !bl, !ml), // bl
+                GetCornerAO(!mr, !br, !bm), // br
             };
         }
 
+        /// <summary>
+        /// Get 4 AO values for each corner of a given face
+        /// </summary>
         private float[] GetCornersAO(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br)
         {
             return new float[]
@@ -108,8 +109,12 @@ namespace CraftSharp.Resource
         }
 
         private static readonly float[] NO_AO = new float[] { 1F, 1F, 1F, 1F };
+        private static readonly float[] FULL_THICKNESS = new float[] { 1F, 1F, 1F, 1F };
 
-        public float[] GetDirCornersAO(CullDir dir, bool[] isOpaque)
+        /// <summary>
+        /// Get 4 corner AO values a face
+        /// </summary>
+        public float[] GetDirCornersAO(CullDir dir, bool[] castAO)
         {
             switch (dir)
             {
@@ -117,35 +122,78 @@ namespace CraftSharp.Resource
                     //  6  7  8    A unity x+ (South)
                     //  3  4  5    |
                     //  0  1  2    o--> unity z+ (East)
-                    return GetCornersAO(isOpaque[ 6], isOpaque[ 7], isOpaque[ 8], isOpaque[ 3], isOpaque[ 5], isOpaque[ 0], isOpaque[ 1], isOpaque[ 2]);
+                    return GetCornersAO(castAO[ 6], castAO[ 7], castAO[ 8], castAO[ 3], castAO[ 5], castAO[ 0], castAO[ 1], castAO[ 2]);
                 case CullDir.UP:
                     // 20 23 26    A unity z+ (East)
                     // 19 22 25    |
                     // 18 21 24    o--> unity x+ (South)
-                    return GetCornersAO(isOpaque[20], isOpaque[23], isOpaque[26], isOpaque[19], isOpaque[25], isOpaque[18], isOpaque[21], isOpaque[24]);
+                    return GetCornersAO(castAO[20], castAO[23], castAO[26], castAO[19], castAO[25], castAO[18], castAO[21], castAO[24]);
                 case CullDir.SOUTH:
                     // 24 25 26    A unity y+ (Up)
                     // 15 16 17    |
                     //  6  7  8    o--> unity z+ (East)
-                    return GetCornersAO(isOpaque[24], isOpaque[25], isOpaque[26], isOpaque[15], isOpaque[17], isOpaque[ 6], isOpaque[ 7], isOpaque[ 8]);
+                    return GetCornersAO(castAO[24], castAO[25], castAO[26], castAO[15], castAO[17], castAO[ 6], castAO[ 7], castAO[ 8]);
                 case CullDir.NORTH:
                     //  2 11 20    A unity y+ (Up)
                     //  1 10 19    |
                     //  0  9 18    o--> unity z+ (East)
-                    return GetCornersAO(isOpaque[ 2], isOpaque[11], isOpaque[20], isOpaque[ 1], isOpaque[19], isOpaque[ 0], isOpaque[ 9], isOpaque[18]);
+                    return GetCornersAO(castAO[ 2], castAO[11], castAO[20], castAO[ 1], castAO[19], castAO[ 0], castAO[ 9], castAO[18]);
                 case CullDir.EAST:
                     //  8 17 26    A unity x+ (South)
                     //  5 14 23    |
                     //  2 11 20    o--> unity y+ (Up)
-                    return GetCornersAO(isOpaque[ 8], isOpaque[17], isOpaque[26], isOpaque[ 5], isOpaque[23], isOpaque[ 2], isOpaque[11], isOpaque[20]);
+                    return GetCornersAO(castAO[ 8], castAO[17], castAO[26], castAO[ 5], castAO[23], castAO[ 2], castAO[11], castAO[20]);
                 case CullDir.WEST:
                     // 18 21 24    A unity y+ (Up)
                     //  9 12 15    |
                     //  0  3  6    o--> unity x+ (South)
-                    return GetCornersAO(isOpaque[18], isOpaque[21], isOpaque[24], isOpaque[ 9], isOpaque[15], isOpaque[ 0], isOpaque[ 3], isOpaque[ 6]);
+                    return GetCornersAO(castAO[18], castAO[21], castAO[24], castAO[ 9], castAO[15], castAO[ 0], castAO[ 3], castAO[ 6]);
 
                 default:
                     return NO_AO;
+            }
+        }
+
+        /// <summary>
+        /// Get 4 corner thickness values a face (Get AO from inside of the cube)
+        /// </summary>
+        public float[] GetDirCornersThickness(CullDir dir, bool[] castAO)
+        {
+            switch (dir)
+            {
+                case CullDir.DOWN:
+                    //  6  7  8    A unity x+ (South)
+                    //  3  4  5    |
+                    //  0  1  2    o--> unity z+ (East)
+                    return GetCornersThickness(castAO[ 6], castAO[ 7], castAO[ 8], castAO[ 3], castAO[ 5], castAO[ 0], castAO[ 1], castAO[ 2]);
+                case CullDir.UP:
+                    // 20 23 26    A unity z+ (East)
+                    // 19 22 25    |
+                    // 18 21 24    o--> unity x+ (South)
+                    return GetCornersThickness(castAO[20], castAO[23], castAO[26], castAO[19], castAO[25], castAO[18], castAO[21], castAO[24]);
+                case CullDir.SOUTH:
+                    // 24 25 26    A unity y+ (Up)
+                    // 15 16 17    |
+                    //  6  7  8    o--> unity z+ (East)
+                    return GetCornersThickness(castAO[24], castAO[25], castAO[26], castAO[15], castAO[17], castAO[ 6], castAO[ 7], castAO[ 8]);
+                case CullDir.NORTH:
+                    //  2 11 20    A unity y+ (Up)
+                    //  1 10 19    |
+                    //  0  9 18    o--> unity z+ (East)
+                    return GetCornersThickness(castAO[ 2], castAO[11], castAO[20], castAO[ 1], castAO[19], castAO[ 0], castAO[ 9], castAO[18]);
+                case CullDir.EAST:
+                    //  8 17 26    A unity x+ (South)
+                    //  5 14 23    |
+                    //  2 11 20    o--> unity y+ (Up)
+                    return GetCornersThickness(castAO[ 8], castAO[17], castAO[26], castAO[ 5], castAO[23], castAO[ 2], castAO[11], castAO[20]);
+                case CullDir.WEST:
+                    // 18 21 24    A unity y+ (Up)
+                    //  9 12 15    |
+                    //  0  3  6    o--> unity x+ (South)
+                    return GetCornersThickness(castAO[18], castAO[21], castAO[24], castAO[ 9], castAO[15], castAO[ 0], castAO[ 3], castAO[ 6]);
+
+                default:
+                    return FULL_THICKNESS;
             }
         }
 
@@ -172,17 +220,38 @@ namespace CraftSharp.Resource
             return math.lerp(ao, 1F, vertLight / 15F);
         }
 
-        private float PackFloats_0F_15F(float a, float b)
+        public float SampleVertexThickness(CullDir dir, float[] cornersThickness, float3 vertPosInBlock)
+        {
+            // Thickness Coord: 0 1
+            //                  2 3
+            float2 ThicknessCoord = dir switch
+            {
+                CullDir.DOWN   => vertPosInBlock.zx,
+                CullDir.UP     => vertPosInBlock.xz,
+                CullDir.SOUTH  => vertPosInBlock.zy,
+                CullDir.NORTH  => vertPosInBlock.yz,
+                CullDir.EAST   => vertPosInBlock.yx,
+                CullDir.WEST   => vertPosInBlock.xy,
+
+                _              => float2.zero
+            };
+
+            return math.lerp(math.lerp(cornersThickness[2], cornersThickness[0], ThicknessCoord.y),
+                     math.lerp(cornersThickness[3], cornersThickness[1], ThicknessCoord.y), ThicknessCoord.x);
+        }
+
+        private float PackFloats_0F_15F(float lowF, float highF)
         {
             // A float number can store an integer with a value of up to 16777216 (2^24)
-            // without losing precision(See https://stackoverflow.com/a/3793950), so we
-            // use a 12-bit unsigned integer(from 0 to 4095) to store each float value.
+            // without losing precision(See https://stackoverflow.com/a/3793950)
 
-            // Map values from [0F, 15F] to [1, 4095]: 4095F * (val / 15F)
-            int aInt = math.clamp(Mathf.RoundToInt(a * 273F), 1, 4095);
-            int bInt = math.clamp(Mathf.RoundToInt(b * 273F), 1, 4095);
+            // a: [0F, 15F] => [0, 4095] (12-bit uint)
+            int low = math.clamp(Mathf.RoundToInt(lowF / 15F * 4095F), 0, 4095);
 
-            return (bInt << 12) | aInt;
+            // b: [0F, 1F] => [0, 4095] (12-bit uint)
+            int high = math.clamp(Mathf.RoundToInt(highF * 4095F), 0, 4095);
+
+            return (high << 12) | low;
         }
 
         public int GetVertexCount(int cullFlags)
@@ -210,7 +279,7 @@ namespace CraftSharp.Resource
                 {
                     verts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
                     float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
-                    float thickness = 1.5F;
+                    float thickness = 15F;
                     float packedVal = PackFloats_0F_15F(vertLight, thickness);
                     float3 vertColor = tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR;
                     tints[i + vertOffset] = new float4(vertColor, packedVal);
@@ -227,12 +296,13 @@ namespace CraftSharp.Resource
                 if ((cullFlags & (1 << dirIdx)) != 0 && vertexArrs[dir].Length > 0)
                 {
                     var cornersAO = GetDirCornersAO(dir, ao);
+                    var cornersThickness = GetDirCornersThickness(dir, ao);
 
                     for (i = 0U;i < vertexArrs[dir].Length;i++)
                     {
                         verts[i + vertOffset] = vertexArrs[dir][i] + posOffset;
                         float vertLight = GetVertexLightFromCornerLights(vertexArrs[dir][i], blockLights);
-                        float thickness = 1.5F;
+                        float thickness = SampleVertexThickness(dir, cornersThickness, vertexArrs[dir][i]);
                         float packedVal = PackFloats_0F_15F(vertLight, thickness);
                         float3 vertColor = (tintIndexArrs[dir][i] >= 0 ? blockColor : DEFAULT_COLOR)
                                 * SampleVertexAO(dir, cornersAO, vertexArrs[dir][i], vertLight);

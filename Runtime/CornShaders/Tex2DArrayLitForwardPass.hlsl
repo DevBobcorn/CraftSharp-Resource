@@ -51,6 +51,8 @@ struct Varyings
     float2  dynamicLightmapUV : TEXCOORD8; // Dynamic lightmap UVs
 #endif
 
+    float2 extraVertData      : TEXCOORD9; // Vertex light and thickness
+
     float4 positionCS                  : SV_POSITION;
     UNITY_VERTEX_INPUT_INSTANCE_ID
     UNITY_VERTEX_OUTPUT_STEREO
@@ -137,11 +139,8 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
         inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, inputData.normalWS);
     #endif
 
-    // Unpack vertex light and thickness
-    float vertLight, thickness;
-    UnpackFloats_0F_15F_float(input.color.w, vertLight, thickness);
-
     // Mix with block light
+    float vertLight = input.extraVertData.x;
     inputData.bakedGI = max(pow(vertLight * 0.1F, 1.5F), inputData.bakedGI);
 
     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
@@ -211,6 +210,11 @@ Varyings LitPassVertexSimple(Attributes input)
     #if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
         output.shadowCoord = GetShadowCoord(vertexInput);
     #endif
+
+    // Unpack vertex light and thickness
+    float vertLight, thickness;
+    UnpackFloats_0F_15F_float(input.color.w, vertLight, thickness);
+    output.extraVertData = float2(vertLight, thickness);
 
     return output;
 }
