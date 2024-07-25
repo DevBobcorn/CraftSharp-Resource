@@ -62,19 +62,6 @@ struct Varyings
 //                  Vertex and Fragment functions                            //
 ///////////////////////////////////////////////////////////////////////////////
 #include "GetTexUVOffset.cginc"
-#include "UnpackFloats.cginc"
-
-void UnpackFloats_0F_15F(float Packed, out float ValA, out float ValB)
-{
-    int packedInt = (int) Packed;
-
-    int aInt = packedInt & 0xFFF; // Lower 12 bits
-    int bInt = packedInt >> 12;   // Higher 12 bits
-
-    // Map values from [1, 4095] to [0F, 15F]: 15F * (val / 4095F)
-    ValA = aInt / 273.0;
-    ValB = bInt / 273.0;
-}
 
 //Fragment stage. Note: Screen position passed here is not normalized (divided by w-component)
 void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 positionWS) 
@@ -140,8 +127,7 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
     #endif
 
     // Mix with block light
-    float vertLight = input.extraVertData.x;
-    inputData.bakedGI = max(pow(vertLight * 0.1F, 1.5F), inputData.bakedGI);
+    inputData.bakedGI = max(pow(input.color.w * 0.1F, 1.5F), inputData.bakedGI);
 
     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
     inputData.shadowMask = SAMPLE_SHADOWMASK(input.staticLightmapUV);
@@ -210,11 +196,6 @@ Varyings LitPassVertexSimple(Attributes input)
     #if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
         output.shadowCoord = GetShadowCoord(vertexInput);
     #endif
-
-    // Unpack vertex light and thickness
-    float vertLight, thickness;
-    UnpackFloats_0F_15F_float(input.color.w, vertLight, thickness);
-    output.extraVertData = float2(vertLight, thickness);
 
     return output;
 }
