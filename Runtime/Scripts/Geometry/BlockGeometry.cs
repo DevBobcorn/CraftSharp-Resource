@@ -75,27 +75,22 @@ namespace CraftSharp.Resource
             );
         }
 
-        private float GetCornerThickness(bool side1, bool corner, bool side2)
-        {
-            return math.saturate(1F - (side1 ? 0.3F : 0F) - (corner ? 0.4F : 0F) - (side2 ? 0.3F : 0F));
-        }
-
         private float GetCornerAO(bool side1, bool corner, bool side2)
         {
-            return math.saturate(1F - (side1 ? 0.5F : 0F) - (corner ? 0.5F : 0F) - (side2 ? 0.5F : 0F));
+            return math.saturate(1F - (side1 ? 0.2F : 0F) - (corner ? 0.2F : 0F) - (side2 ? 0.2F : 0F));
         }
 
         /// <summary>
-        /// Get 4 thickness values for each corner of a given face
+        /// Get 4 thickness values for each corner of a given face (Get AO from other side of the face)
         /// </summary>
         private float[] GetCornersThickness(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br)
         {
             return new float[]
             {
-                GetCornerThickness(!bm, !br, !mr), // bl
-                GetCornerThickness(!mr, !tr, !tm), // tl
-                GetCornerThickness(!ml, !bl, !bm), // br
-                GetCornerThickness(!tm, !tl, !ml), // tr
+                GetCornerAO(!bm, !br, !mr), // bl
+                GetCornerAO(!mr, !tr, !tm), // tl
+                GetCornerAO(!ml, !bl, !bm), // br
+                GetCornerAO(!tm, !tl, !ml), // tr
             };
         }
 
@@ -334,8 +329,8 @@ namespace CraftSharp.Resource
                     float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
                     if (packThickness)
                     {
-                        // TODO: See if vertex normal is necessary
-                        float packedVal = PackExtraVertData(vertLight, 0, 0F);
+                        int vertNormal = GetVertexNormalIndex(vertexArrs[CullDir.NONE][i], castAOMask);
+                        float packedVal = PackExtraVertData(vertLight, vertNormal, 0F);
                         tints[i + vertOffset] = new float4(vertColor, packedVal);
                     }
                     else
@@ -356,20 +351,7 @@ namespace CraftSharp.Resource
                 {
                     var cornersAO = GetDirCornersAO(dir, castAOMask);
 
-                    float[] cornersThickness;
-
-                    /*
-                    if ((castAOMask & (1 << 4)) == 0)
-                    {
-                        // Set lowest 9 bits (bottom layer of blocks)
-                        var castAOMaskWithBottomDisabled = castAOMask | 0b111111111;
-                        cornersThickness = GetDirCornersThickness(dir, castAOMaskWithBottomDisabled);
-                    }
-                    else
-                    */
-                    {
-                        cornersThickness = GetDirCornersThickness(dir, castAOMask);
-                    }
+                    float[] cornersThickness = GetDirCornersThickness(dir, castAOMask);
 
                     for (i = 0U;i < vertexArrs[dir].Length;i++)
                     {

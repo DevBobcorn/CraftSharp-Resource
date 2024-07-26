@@ -63,6 +63,14 @@ struct Varyings
 ///////////////////////////////////////////////////////////////////////////////
 #include "GetTexUVOffset.cginc"
 
+// See https://docs.unity3d.com/Packages/com.unity.shadergraph@6.9/manual/Colorspace-Conversion-Node.html
+void ColorspaceConversion_RGB_Linear(float3 In, out float3 Out)
+{
+    float3 linearRGBLo = In / 12.92;;
+    float3 linearRGBHi = pow(max(abs((In + 0.055) / 1.055), 1.192092896e-07), float3(2.4, 2.4, 2.4));
+    Out = float3(In <= 0.04045) ? linearRGBLo : linearRGBHi;
+}
+
 //Fragment stage. Note: Screen position passed here is not normalized (divided by w-component)
 void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 positionWS) 
 {
@@ -213,7 +221,10 @@ void LitPassFragmentSimple(
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
     SurfaceData surfaceData;
-    InitializeSimpleLitSurfaceData(input.uv, input.color.xyz, surfaceData);
+    float3 linearVertColor;
+    ColorspaceConversion_RGB_Linear(input.color.xyz, linearVertColor);
+
+    InitializeSimpleLitSurfaceData(input.uv, linearVertColor, surfaceData);
 
     #ifdef LOD_FADE_CROSSFADE
         //LODFadeCrossFade(input.positionCS);
