@@ -17,6 +17,13 @@ namespace CraftSharp.Resource
         public readonly Dictionary<CullDir, List<int>> tintIndices  = new();
         public readonly Dictionary<CullDir, uint> vertIndexOffset   = new();
 
+        /// <summary>
+        /// Cull directions for vertices on faces not being culled on any direction(CullDir.NONE), used
+        /// as a reference for some cull direction based calculations. It's length should be a 1/4 of
+        /// verticies[CullDir.NONE].Length, because 4 vertices on the same quad share a same direction.
+        /// </summary>
+        public readonly List<CullDir> noCullingVertexDirections     = new();
+
         public BlockGeometryBuilder()
         {
             // Initialize these collections...
@@ -42,7 +49,8 @@ namespace CraftSharp.Resource
                 verticies.ToDictionary(x => x.Key, x => x.Value.ToArray()),
                 uvs.ToDictionary(x => x.Key, x => x.Value.ToArray()),
                 uvAnims.ToDictionary(x => x.Key, x => x.Value.ToArray()),
-                tintIndices.ToDictionary(x => x.Key, x => x.Value.ToArray())
+                tintIndices.ToDictionary(x => x.Key, x => x.Value.ToArray()),
+                noCullingVertexDirections.ToArray()
             );
         }
 
@@ -86,6 +94,16 @@ namespace CraftSharp.Resource
 
                 // Update current cull direcion...
                 var cullDir = cullMap[zyRot][face.cullDir];
+
+                // Store face direction for vertices on no-culling faces (Used by calculations based on face direction)
+                if (cullDir == CullDir.NONE)
+                {
+                    // Use CullDir for rotation mapping 
+                    var faceDirAsCullDir = Directions.CullDirFromFaceDir(facePair.Key);
+                    var rotatedCullDir = cullMap[zyRot][faceDirAsCullDir];
+
+                    noCullingVertexDirections.Add(rotatedCullDir);
+                }
 
                 switch (facePair.Key) // Build face in that direction
                 {
@@ -235,13 +253,10 @@ namespace CraftSharp.Resource
                         result.Add(dir, (8 - localRot.GetValueOrDefault(dir, 0)) % 4);
 
                     areaRotMap.Add(new int2(rotz, roty), result);
-
                 }
-                
             }
             
             return areaRotMap;
-
         }
 
         private static readonly Dictionary<int2, Dictionary<FaceDir, int>> uvlockMap = CreateUVLockMap();
@@ -284,12 +299,10 @@ namespace CraftSharp.Resource
                     }
 
                     cullRemap.Add(new int2(rotz, roty), remap);
-
                 }
             }
 
             return cullRemap;
-
         }
 
         private static readonly Dictionary<int2, Dictionary<CullDir, CullDir>> cullMap = CreateCullMap();

@@ -14,7 +14,8 @@ namespace CraftSharp.Resource
     {
         public static FaceDir FaceDirFromName(string name)
         {
-            return name.ToLower() switch {
+            return name.ToLower() switch
+            {
                 "up"    => FaceDir.UP,
                 "down"  => FaceDir.DOWN,
                 "north" => FaceDir.NORTH,
@@ -27,7 +28,8 @@ namespace CraftSharp.Resource
 
         public static CullDir CullDirFromName(string name)
         {
-            return name.ToLower() switch {
+            return name.ToLower() switch
+            {
                 "up"    => CullDir.UP,
                 "down"  => CullDir.DOWN,
                 "north" => CullDir.NORTH,
@@ -36,6 +38,21 @@ namespace CraftSharp.Resource
                 "west"  => CullDir.WEST,
                 "none"  => CullDir.NONE,
                 _       => CullDir.NONE
+            };
+        }
+
+        public static CullDir CullDirFromFaceDir(FaceDir dir)
+        {
+            return dir switch
+            {
+                FaceDir.UP    => CullDir.UP,
+                FaceDir.DOWN  => CullDir.DOWN,
+                FaceDir.NORTH => CullDir.NORTH,
+                FaceDir.SOUTH => CullDir.SOUTH,
+                FaceDir.EAST  => CullDir.EAST,
+                FaceDir.WEST  => CullDir.WEST,
+
+                _             => CullDir.UP
             };
         }
     }
