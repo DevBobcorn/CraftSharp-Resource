@@ -1,6 +1,6 @@
 {
   "name": "com.devbobcorn.craftsharp-resource",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "displayName": "CraftSharp Resource",
   "description": "A Unity package for loading resource files from Minecraft JE.",
   "unity": "2022.3",

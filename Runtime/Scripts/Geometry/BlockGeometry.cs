@@ -279,27 +279,7 @@ namespace CraftSharp.Resource
             return math.lerp(ao, 1F, vertLight / 15F);
         }
 
-        public float SampleVertexThickness(CullDir dir, float[] cornersThickness, float3 vertPosInBlock)
-        {
-            // Thickness Coord: 0 1
-            //                  2 3
-            float2 ThicknessCoord = dir switch
-            {
-                CullDir.DOWN   => vertPosInBlock.zx,
-                CullDir.UP     => vertPosInBlock.xz,
-                CullDir.SOUTH  => vertPosInBlock.zy,
-                CullDir.NORTH  => vertPosInBlock.yz,
-                CullDir.EAST   => vertPosInBlock.yx,
-                CullDir.WEST   => vertPosInBlock.xy,
-
-                _              => float2.zero
-            };
-
-            return math.lerp(math.lerp(cornersThickness[2], cornersThickness[0], ThicknessCoord.y),
-                     math.lerp(cornersThickness[3], cornersThickness[1], ThicknessCoord.y), ThicknessCoord.x);
-        }
-
-        private int GetVertexNormalIndex(float3 vertPosInBlock, int castAOMask)
+        private int GetVertexNormalIndex_Block(float3 vertPosInBlock, int castAOMask)
         {
             int index = 0;
 
@@ -333,7 +313,7 @@ namespace CraftSharp.Resource
             return index;
         }
 
-        private float PackExtraVertData(float light, int vertIndex, float thickness)
+        private float PackExtraVertData(float light, int vertNormalIndex)
         {
             // A float number can store an integer with a value of up to 16777216 (2^24)
             // without losing precision(See https://stackoverflow.com/a/3793950)
@@ -344,10 +324,7 @@ namespace CraftSharp.Resource
             // vert normal index: (6-bit uint)
             // x: 2-bit, y: 2-bit, z: 2-bit
 
-            // thickness: [0F, 1F] => [0, 255] (8-bit uint)
-            int high = math.clamp(Mathf.RoundToInt(thickness * 255F), 0, 255);
-
-            return (high << 14) | (vertIndex << 8) | low;
+            return (vertNormalIndex << 8) | low;
         }
 
         public int GetVertexCount(int cullFlags)
@@ -362,10 +339,17 @@ namespace CraftSharp.Resource
             return new float3(Mathf.GammaToLinearSpace(rgb.x), Mathf.GammaToLinearSpace(rgb.y), Mathf.GammaToLinearSpace(rgb.z));
         }
 
+        public enum ExtraVertexData
+        {
+            Light,
+            Light_BlockNormal,    // Used for foliage
+            Light_CrossNormal     // Used for plants
+        }
+
         /// <summary>
         /// Build block vertices into the given vertex buffer. Returns vertex offset after building.
         /// </summary>
-        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float[] blockLights, float3 blockColor, bool packThickness = false)
+        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
         {
             var verts = buffer.vert;
             var txuvs = buffer.txuv;
@@ -389,15 +373,20 @@ namespace CraftSharp.Resource
                     float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
                     float3 vertColor = RGB2Linear(tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR)
                             * SampleVertexAO(faceDir, dir2ao[faceDir], vertexArrs[CullDir.NONE][i], vertLight);
-                    if (packThickness)
+                    switch (datFormat)
                     {
-                        int vertNormal = GetVertexNormalIndex(vertexArrs[CullDir.NONE][i], castAOMask);
-                        float packedVal = PackExtraVertData(vertLight, vertNormal, 0F);
-                        tints[i + vertOffset] = new float4(vertColor, packedVal);
-                    }
-                    else
-                    {
-                        tints[i + vertOffset] = new float4(vertColor, vertLight);
+                        case ExtraVertexData.Light_BlockNormal:
+                            int vertNormal1 = GetVertexNormalIndex_Block(vertexArrs[CullDir.NONE][i], castAOMask);
+                            float packedVal1 = PackExtraVertData(vertLight, vertNormal1);
+                            tints[i + vertOffset] = new float4(vertColor, packedVal1);
+                            break;
+                        case ExtraVertexData.Light_CrossNormal:
+                            float packedVal2 = PackExtraVertData(vertLight, 0x3F);
+                            tints[i + vertOffset] = new float4(vertColor, packedVal2);
+                            break;
+                        case ExtraVertexData.Light:
+                            tints[i + vertOffset] = new float4(vertColor, vertLight);
+                            break;
                     }
                 }
                 uvArrs[CullDir.NONE].CopyTo(txuvs, vertOffset);
@@ -421,16 +410,20 @@ namespace CraftSharp.Resource
                         float vertLight = GetVertexLightFromCornerLights(vertexArrs[dir][i], blockLights);
                         float3 vertColor = RGB2Linear(tintIndexArrs[dir][i] >= 0 ? blockColor : DEFAULT_COLOR)
                                 * SampleVertexAO(dir, cornersAO, vertexArrs[dir][i], vertLight);
-                        if (packThickness)
+                        switch (datFormat)
                         {
-                            float thickness = SampleVertexThickness(dir, cornersThickness, vertexArrs[dir][i]);
-                            int vertNormal = GetVertexNormalIndex(vertexArrs[dir][i], castAOMask);
-                            float packedVal = PackExtraVertData(vertLight, vertNormal, thickness);
-                            tints[i + vertOffset] = new float4(vertColor, packedVal);
-                        }
-                        else
-                        {
-                            tints[i + vertOffset] = new float4(vertColor, vertLight);
+                            case ExtraVertexData.Light_BlockNormal:
+                                int vertNormal1 = GetVertexNormalIndex_Block(vertexArrs[dir][i], castAOMask);
+                                float packedVal1 = PackExtraVertData(vertLight, vertNormal1);
+                                tints[i + vertOffset] = new float4(vertColor, packedVal1);
+                                break;
+                            case ExtraVertexData.Light_CrossNormal:
+                                float packedVal2 = PackExtraVertData(vertLight, 0x3F);
+                                tints[i + vertOffset] = new float4(vertColor, packedVal2);
+                                break;
+                            case ExtraVertexData.Light:
+                                tints[i + vertOffset] = new float4(vertColor, vertLight);
+                                break;
                         }
                     }
                     uvArrs[dir].CopyTo(txuvs, vertOffset);
@@ -441,11 +434,11 @@ namespace CraftSharp.Resource
         }
 
         public void BuildWithCollider(VertexBuffer buffer, ref uint vertOffset, float3[] cVerts, ref uint cVertOffset, float3 posOffset,
-                int cullFlags, int castAOMask, float[] blockLights, float3 blockColor, bool packThickness = false)
+                int cullFlags, int castAOMask, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
         {
             var startOffset = vertOffset;
 
-            Build(buffer, ref vertOffset, posOffset, cullFlags, castAOMask, blockLights, blockColor, packThickness);
+            Build(buffer, ref vertOffset, posOffset, cullFlags, castAOMask, blockLights, blockColor, datFormat);
 
             var newVertexCount = vertOffset - startOffset;
 
