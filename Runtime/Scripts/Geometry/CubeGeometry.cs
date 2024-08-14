@@ -94,7 +94,7 @@ namespace CraftSharp.Resource
                 verts[vertOffset + 3] = new(1, 0, 0); // 1 => 1
                 fullUVs.CopyTo(txuvs, vertOffset);
                 uvAnims.CopyTo(uvans, vertOffset);
-                // Not necessary vertOffset += 4;
+                vertOffset += 4;
             }
 
             for (uint i = startOffset; i < vertOffset; i++) // For each new vertex in the mesh
