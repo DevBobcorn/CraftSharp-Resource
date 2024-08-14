@@ -59,11 +59,11 @@ namespace CraftSharp.Resource
                     results.Add(new BlockGeometryBuilder(BlockModelWrapper.FromJson(manager, variant.Value)).Build());
                 }
 
-                foreach (var stateId in BlockStatePalette.INSTANCE.StateListTable[blockId])
+                foreach (var stateId in BlockStatePalette.INSTANCE.GetAllNumIds(blockId))
                 {
                     // For every possible state of this block, select the states that belong
                     // to this variant and give them this geometry list to use...
-                    if (!manager.StateModelTable.ContainsKey(stateId) && conditions.Check(BlockStatePalette.INSTANCE.StatesTable[stateId]))
+                    if (!manager.StateModelTable.ContainsKey(stateId) && conditions.Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                     {
                         // Then this block state belongs to the current variant...
                         manager.StateModelTable.Add(stateId, new(results, renderType));
@@ -75,7 +75,7 @@ namespace CraftSharp.Resource
         private void LoadMultipartFormat(List<Json.JSONData> parts, ResourceLocation blockId, RenderType renderType, ResourcePackManager manager)
         {
             var buildersList = new Dictionary<int, BlockGeometryBuilder>();
-            foreach (var stateId in BlockStatePalette.INSTANCE.StateListTable[blockId])
+            foreach (var stateId in BlockStatePalette.INSTANCE.GetAllNumIds(blockId))
             {
                 buildersList.Add(stateId, new BlockGeometryBuilder());
             }
@@ -110,7 +110,7 @@ namespace CraftSharp.Resource
                                 // An array of predicates in the value of 'OR'
                                 foreach (var conditionData in whenData.Properties["OR"].DataArray)
                                 {
-                                    if (BlockStatePredicate.FromJson(conditionData).Check(BlockStatePalette.INSTANCE.StatesTable[stateId]))
+                                    if (BlockStatePredicate.FromJson(conditionData).Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                                     {
                                         apply = true;
                                         break;
@@ -127,7 +127,7 @@ namespace CraftSharp.Resource
                             {
                                 int stateId = stateItem.Key;
                                 // Check and apply...
-                                if (BlockStatePredicate.FromJson(whenData).Check(BlockStatePalette.INSTANCE.StatesTable[stateId]))
+                                if (BlockStatePredicate.FromJson(whenData).Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                                     buildersList[stateId].AppendWrapper(partWrapper);
                             }
                         }

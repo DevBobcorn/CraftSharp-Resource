@@ -168,10 +168,8 @@ namespace CraftSharp.Resource
         public void BuildStateGeometries()
         {
             // Load all blockstate files and build their block meshes...
-            foreach (var blockPair in BlockStatePalette.INSTANCE.StateListTable)
+            foreach (var blockId in BlockStatePalette.INSTANCE.GetAllGroupIds())
             {
-                var blockId = blockPair.Key;
-                
                 if (BlockStateFileTable.ContainsKey(blockId)) // Load the state model definition of this block
                 {
                     var renderType =
@@ -189,9 +187,9 @@ namespace CraftSharp.Resource
         public void BuildItemGeometries()
         {
             // Load all item model files and build their item meshes...
-            foreach (var numId in ItemPalette.INSTANCE.ItemsTable.Keys)
+            foreach (var numId in ItemPalette.INSTANCE.GetAllNumIds())
             {
-                var item = ItemPalette.INSTANCE.ItemsTable[numId];
+                var item = ItemPalette.INSTANCE.GetByNumId(numId);
                 var itemId = item.ItemId;
 
                 var itemModelId = new ResourceLocation(itemId.Namespace, $"item/{itemId.Path}");
