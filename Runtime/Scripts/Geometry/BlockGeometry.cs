@@ -79,36 +79,22 @@ namespace CraftSharp.Resource
             );
         }
 
-        private float GetCornerAO(bool side1, bool corner, bool side2)
+        private float GetCornerAO(bool side1, bool corner, bool side2, float intensity)
         {
-            return 1F - (side1 ? 0.33F : 0F) - (corner ? 0.33F : 0F) - (side2 ? 0.33F : 0F);
-        }
-
-        /// <summary>
-        /// Get 4 thickness values for each corner of a given face (Get AO from other side of the face)
-        /// </summary>
-        private float[] GetCornersThickness(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br)
-        {
-            return new float[]
-            {
-                GetCornerAO(!bm, !br, !mr), // bl
-                GetCornerAO(!mr, !tr, !tm), // tl
-                GetCornerAO(!ml, !bl, !bm), // br
-                GetCornerAO(!tm, !tl, !ml), // tr
-            };
+            return 1F - (side1 ? intensity : 0F) - (corner ? intensity : 0F) - (side2 ? intensity : 0F);
         }
 
         /// <summary>
         /// Get 4 AO values for each corner of a given face
         /// </summary>
-        private float[] GetCornersAO(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br)
+        private float[] GetCornersAO(bool tl, bool tm, bool tr, bool ml, bool mr, bool bl, bool bm, bool br, float intensity)
         {
             return new float[]
             {
-                GetCornerAO(ml, tl, tm), // tl
-                GetCornerAO(tm, tr, mr), // tr
-                GetCornerAO(bm, bl, ml), // bl
-                GetCornerAO(mr, br, bm), // br
+                GetCornerAO(ml, tl, tm, intensity), // tl
+                GetCornerAO(tm, tr, mr, intensity), // tr
+                GetCornerAO(bm, bl, ml, intensity), // bl
+                GetCornerAO(mr, br, bm, intensity), // br
             };
         }
 
@@ -118,7 +104,7 @@ namespace CraftSharp.Resource
         /// <summary>
         /// Get 4 corner AO values for a face
         /// </summary>
-        public float[] GetDirCornersAO(CullDir dir, int castAOMask)
+        public float[] GetDirCornersAO(CullDir dir, int castAOMask, float intensity)
         {
             bool castAO(int index)
             {
@@ -131,88 +117,41 @@ namespace CraftSharp.Resource
                     //  6  7  8    A unity x+ (South)
                     //  3  4  5    |
                     //  0  1  2    o--> unity z+ (East)
-                    GetCornersAO(castAO( 6), castAO( 7), castAO( 8), castAO( 3), castAO( 5), castAO( 0), castAO( 1), castAO( 2)),
+                    GetCornersAO(castAO( 6), castAO( 7), castAO( 8), castAO( 3), castAO( 5), castAO( 0), castAO( 1), castAO( 2), intensity),
                 CullDir.UP        =>
                     // 20 23 26    A unity z+ (East)
                     // 19 22 25    |
                     // 18 21 24    o--> unity x+ (South)
-                    GetCornersAO(castAO(20), castAO(23), castAO(26), castAO(19), castAO(25), castAO(18), castAO(21), castAO(24)),
+                    GetCornersAO(castAO(20), castAO(23), castAO(26), castAO(19), castAO(25), castAO(18), castAO(21), castAO(24), intensity),
                 CullDir.SOUTH     =>
                     // 24 25 26    A unity y+ (Up)
                     // 15 16 17    |
                     //  6  7  8    o--> unity z+ (East)
-                    GetCornersAO(castAO(24), castAO(25), castAO(26), castAO(15), castAO(17), castAO( 6), castAO( 7), castAO( 8)),
+                    GetCornersAO(castAO(24), castAO(25), castAO(26), castAO(15), castAO(17), castAO( 6), castAO( 7), castAO( 8), intensity),
                 CullDir.NORTH     =>
                     //  2 11 20    A unity z+ (East)
                     //  1 10 19    |
                     //  0  9 18    o--> unity y+ (Up)
-                    GetCornersAO(castAO( 2), castAO(11), castAO(20), castAO( 1), castAO(19), castAO( 0), castAO( 9), castAO(18)),
+                    GetCornersAO(castAO( 2), castAO(11), castAO(20), castAO( 1), castAO(19), castAO( 0), castAO( 9), castAO(18), intensity),
                 CullDir.EAST      =>
                     //  8 17 26    A unity x+ (South)
                     //  5 14 23    |
                     //  2 11 20    o--> unity y+ (Up)
-                    GetCornersAO(castAO( 8), castAO(17), castAO(26), castAO( 5), castAO(23), castAO( 2), castAO(11), castAO(20)),
+                    GetCornersAO(castAO( 8), castAO(17), castAO(26), castAO( 5), castAO(23), castAO( 2), castAO(11), castAO(20), intensity),
                 CullDir.WEST      =>
                     // 18 21 24    A unity y+ (Up)
                     //  9 12 15    |
                     //  0  3  6    o--> unity x+ (South)
-                    GetCornersAO(castAO(18), castAO(21), castAO(24), castAO( 9), castAO(15), castAO( 0), castAO( 3), castAO( 6)),
+                    GetCornersAO(castAO(18), castAO(21), castAO(24), castAO( 9), castAO(15), castAO( 0), castAO( 3), castAO( 6), intensity),
 
                 _                 => NO_AO
             };
         }
 
         /// <summary>
-        /// Get 4 corner thickness values for a face (Get AO from inside of the cube)
-        /// </summary>
-        public float[] GetDirCornersThickness(CullDir dir, int castAOMask)
-        {
-            bool castAO(int index)
-            {
-                return (castAOMask & (1 << index)) != 0;
-            }
-
-            return dir switch
-            {
-                CullDir.DOWN      =>
-                    // 11 14 17    A unity z+ (East)
-                    // 10 [] 16    |
-                    //  9 12 15    o--> unity x+ (South)
-                    GetCornersThickness(castAO(11), castAO(14), castAO(17), castAO(10), castAO(16), castAO( 9), castAO(12), castAO(15)),
-                CullDir.UP        =>
-                    // 15 16 17    A unity x+ (South)
-                    // 12 [] 14    |
-                    //  9 10 11    o--> unity z+ (East)
-                    GetCornersThickness(castAO(15), castAO(16), castAO(17), castAO(12), castAO(14), castAO( 9), castAO(10), castAO(11)),
-                CullDir.SOUTH     =>
-                    //  5 14 23    A unity z+ (East)
-                    //  4 [] 22    |
-                    //  3 12 21    o--> unity y+ (Up)
-                    GetCornersThickness(castAO( 5), castAO(14), castAO(23), castAO( 4), castAO(22), castAO( 3), castAO(12), castAO(21)),
-                CullDir.NORTH     =>
-                    // 21 22 23    A unity y+ (Up)
-                    // 12 [] 14    |
-                    //  3  4  5    o--> unity z+ (East)
-                    GetCornersThickness(castAO(21), castAO(22), castAO(23), castAO(12), castAO(14), castAO( 3), castAO( 4), castAO( 5)),
-                CullDir.EAST      =>
-                    // 19 22 25    A unity y+ (Up)
-                    // 10 [] 16    |
-                    //  1  4  7    o--> unity x+ (South)
-                    GetCornersThickness(castAO(19), castAO(22), castAO(25), castAO(10), castAO(16), castAO( 1), castAO( 4), castAO( 7)),
-                CullDir.WEST      =>
-                    //  7 16 25    A unity x+ (South)
-                    //  4 [] 22    |
-                    //  1 10 19    o--> unity y+ (Up)
-                    GetCornersThickness(castAO( 7), castAO(16), castAO(25), castAO( 4), castAO(22), castAO( 1), castAO(10), castAO(19)),
-
-                _                 => FULL_THICKNESS
-            };
-        }
-
-        /// <summary>
         /// Get 4 corner AO values for a face which is inside the block
         /// </summary>
-        public float[] GetDirCornersInBlockAO(CullDir dir, int castAOMask)
+        public float[] GetDirCornersInBlockAO(CullDir dir, int castAOMask, float intensity)
         {
             bool castAO(int index)
             {
@@ -225,32 +164,32 @@ namespace CraftSharp.Resource
                     // 11 14 17    A unity z+ (East)
                     // 10 [] 16    |
                     //  9 12 15    o--> unity x+ (South)
-                    GetCornersAO(castAO(11), castAO(14), castAO(17), castAO(10), castAO(16), castAO( 9), castAO(12), castAO(15)),
+                    GetCornersAO(castAO(11), castAO(14), castAO(17), castAO(10), castAO(16), castAO( 9), castAO(12), castAO(15), intensity),
                 CullDir.DOWN      =>
                     // 15 16 17    A unity x+ (South)
                     // 12 [] 14    |
                     //  9 10 11    o--> unity z+ (East)
-                    GetCornersAO(castAO(15), castAO(16), castAO(17), castAO(12), castAO(14), castAO( 9), castAO(10), castAO(11)),
+                    GetCornersAO(castAO(15), castAO(16), castAO(17), castAO(12), castAO(14), castAO( 9), castAO(10), castAO(11), intensity),
                 CullDir.NORTH     =>
                     //  5 14 23    A unity z+ (East)
                     //  4 [] 22    |
                     //  3 12 21    o--> unity y+ (Up)
-                    GetCornersAO(castAO( 5), castAO(14), castAO(23), castAO( 4), castAO(22), castAO( 3), castAO(12), castAO(21)),
+                    GetCornersAO(castAO( 5), castAO(14), castAO(23), castAO( 4), castAO(22), castAO( 3), castAO(12), castAO(21), intensity),
                 CullDir.SOUTH     =>
                     // 21 22 23    A unity y+ (Up)
                     // 12 [] 14    |
                     //  3  4  5    o--> unity z+ (East)
-                    GetCornersAO(castAO(21), castAO(22), castAO(23), castAO(12), castAO(14), castAO( 3), castAO( 4), castAO( 5)),
+                    GetCornersAO(castAO(21), castAO(22), castAO(23), castAO(12), castAO(14), castAO( 3), castAO( 4), castAO( 5), intensity),
                 CullDir.WEST      =>
                     // 19 22 25    A unity y+ (Up)
                     // 10 [] 16    |
                     //  1  4  7    o--> unity x+ (South)
-                    GetCornersAO(castAO(19), castAO(22), castAO(25), castAO(10), castAO(16), castAO( 1), castAO( 4), castAO( 7)),
+                    GetCornersAO(castAO(19), castAO(22), castAO(25), castAO(10), castAO(16), castAO( 1), castAO( 4), castAO( 7), intensity),
                 CullDir.EAST      =>
                     //  7 16 25    A unity x+ (South)
                     //  4 [] 22    |
                     //  1 10 19    o--> unity y+ (Up)
-                    GetCornersAO(castAO( 7), castAO(16), castAO(25), castAO( 4), castAO(22), castAO( 1), castAO(10), castAO(19)),
+                    GetCornersAO(castAO( 7), castAO(16), castAO(25), castAO( 4), castAO(22), castAO( 1), castAO(10), castAO(19), intensity),
 
                 _                 => NO_AO
             };
@@ -349,7 +288,7 @@ namespace CraftSharp.Resource
         /// <summary>
         /// Build block vertices into the given vertex buffer. Returns vertex offset after building.
         /// </summary>
-        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
+        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
         {
             var verts = buffer.vert;
             var txuvs = buffer.txuv;
@@ -362,7 +301,7 @@ namespace CraftSharp.Resource
             {
                 // Calculate in-block AO
                 var aoDirs = noCullingVertexDirArr.ToHashSet();
-                var dir2ao = aoDirs.ToDictionary(x => x, x => GetDirCornersInBlockAO(x, castAOMask));
+                var dir2ao = aoDirs.ToDictionary(x => x, x => GetDirCornersInBlockAO(x, castAOMask, aoIntensity));
 
                 for (i = 0U;i < vertexArrs[CullDir.NONE].Length;i++)
                 {
@@ -372,7 +311,7 @@ namespace CraftSharp.Resource
                     verts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
                     float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
                     float3 vertColor = RGB2Linear(tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR)
-                            * SampleVertexAO(faceDir, dir2ao[faceDir], vertexArrs[CullDir.NONE][i], vertLight);
+                            * (aoIntensity > 0F ? SampleVertexAO(faceDir, dir2ao[faceDir], vertexArrs[CullDir.NONE][i], vertLight) : 1F);
                     switch (datFormat)
                     {
                         case ExtraVertexData.Light_BlockNormal:
@@ -400,16 +339,14 @@ namespace CraftSharp.Resource
 
                 if ((cullFlags & (1 << dirIdx)) != 0 && vertexArrs[dir].Length > 0)
                 {
-                    var cornersAO = GetDirCornersAO(dir, castAOMask);
-
-                    float[] cornersThickness = GetDirCornersThickness(dir, castAOMask);
+                    var cornersAO = GetDirCornersAO(dir, castAOMask, aoIntensity);
 
                     for (i = 0U;i < vertexArrs[dir].Length;i++)
                     {
                         verts[i + vertOffset] = vertexArrs[dir][i] + posOffset;
                         float vertLight = GetVertexLightFromCornerLights(vertexArrs[dir][i], blockLights);
                         float3 vertColor = RGB2Linear(tintIndexArrs[dir][i] >= 0 ? blockColor : DEFAULT_COLOR)
-                                * SampleVertexAO(dir, cornersAO, vertexArrs[dir][i], vertLight);
+                                * (aoIntensity > 0F ? SampleVertexAO(dir, cornersAO, vertexArrs[dir][i], vertLight) : 1F);
                         switch (datFormat)
                         {
                             case ExtraVertexData.Light_BlockNormal:
@@ -434,11 +371,11 @@ namespace CraftSharp.Resource
         }
 
         public void BuildWithCollider(VertexBuffer buffer, ref uint vertOffset, float3[] cVerts, ref uint cVertOffset, float3 posOffset,
-                int cullFlags, int castAOMask, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
+                int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
         {
             var startOffset = vertOffset;
 
-            Build(buffer, ref vertOffset, posOffset, cullFlags, castAOMask, blockLights, blockColor, datFormat);
+            Build(buffer, ref vertOffset, posOffset, cullFlags, castAOMask, aoIntensity, blockLights, blockColor, datFormat);
 
             var newVertexCount = vertOffset - startOffset;
 
