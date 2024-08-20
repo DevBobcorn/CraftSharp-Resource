@@ -56,10 +56,13 @@ namespace CraftSharp.Resource
 
         public void AppendWrapper(BlockModelWrapper wrapper)
         {
-            // Build things up!
-            foreach (var elem in wrapper.model.Elements)
+            if (wrapper is not null)
             {
-                AppendElement(wrapper.model, elem, wrapper.zyRot, wrapper.uvlock);
+                // Build things up!
+                foreach (var elem in wrapper.model.Elements)
+                {
+                    AppendElement(wrapper.model, elem, wrapper.zyRot, wrapper.uvlock);
+                }
             }
         }
 

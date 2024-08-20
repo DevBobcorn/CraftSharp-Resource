@@ -21,8 +21,21 @@ namespace CraftSharp.Resource
             if (data.Properties.ContainsKey("model"))
             {
                 ResourceLocation modelIdentifier = ResourceLocation.FromString(data.Properties["model"].StringValue);
+
+                bool modelFound;
+
                 // Check if the model can be found...
-                if (manager.BlockModelTable.ContainsKey(modelIdentifier))
+                if (manager.BlockModelTable.TryGetValue(modelIdentifier, out JsonModel blockModel))
+                {
+                    modelFound = true;
+                }
+                else
+                {
+                    modelIdentifier = ResourceLocation.FromString("block/" + data.Properties["model"].StringValue);
+                    modelFound = manager.BlockModelTable.TryGetValue(modelIdentifier, out blockModel);
+                }
+
+                if (modelFound)
                 {
                     int zr = 0, yr = 0;
                     bool uvlock = false;
@@ -52,13 +65,20 @@ namespace CraftSharp.Resource
                     if (data.Properties.ContainsKey("uvlock"))
                         bool.TryParse(data.Properties["uvlock"].StringValue, out uvlock);
 
-                    return new BlockModelWrapper(manager.BlockModelTable[modelIdentifier], new int2(zr, yr), uvlock);
+                    return new BlockModelWrapper(blockModel, new int2(zr, yr), uvlock);
                 }
-
+                else
+                {
+                    Debug.LogWarning($"Model {modelIdentifier} is not found!");
+                    return null;
+                }
             }
-
-            Debug.LogWarning("Invalid block model wrapper!");
-            return null;
+            else
+            {
+                Debug.LogWarning($"Wrapper does not contain block model!");
+                return null;
+            }
+            
         }
     }
 }

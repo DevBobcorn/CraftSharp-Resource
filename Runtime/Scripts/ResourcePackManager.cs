@@ -678,7 +678,7 @@ namespace CraftSharp.Resource
             }
             while (curTexIndex < totalCount);
 
-            var atlasArray0 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32,  2, false);
+            var atlasArray0 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32,  0, false);
             var atlasArray1 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32,  4, false);
 
             atlasArray0.filterMode = FilterMode.Point;
@@ -686,8 +686,8 @@ namespace CraftSharp.Resource
 
             for (int index = 0;index < atlases.Count;index++)
             {
-                atlasArray0.SetPixels(atlases[index].GetPixels(), index, 0);
-                atlasArray1.SetPixels(atlases[index].GetPixels(), index, 0);
+                atlasArray0.SetPixels32(atlases[index].GetPixels32(), index, 0);
+                atlasArray1.SetPixels32(atlases[index].GetPixels32(), index, 0);
 
                 yield return null;
             }
