@@ -484,7 +484,7 @@ namespace CraftSharp.Resource
             return tex;
         }
 
-        private Texture2D GetMissingEntityTexture(int width, int height)
+        public Texture2D GetMissingEntityTexture(int width, int height)
         {
             Texture2D tex = new(width, height)
             {
@@ -742,7 +742,7 @@ namespace CraftSharp.Resource
                 if (tex.Key.Path.StartsWith("entity"))
                 {
                     //Debug.Log($"Entity texture: {tex.Key}");
-                    LoadEntityTextureFromPacks(tex.Key);
+                    GetEntityTextureFromTable(tex.Key);
                 }
 
                 yield return null;
@@ -755,7 +755,7 @@ namespace CraftSharp.Resource
         /// Load an entity texture from an image file in current texture file table.
         /// </summary>
         /// <param name="texId">Texture id</param>
-        public Texture2D LoadEntityTextureFromPacks(ResourceLocation texId, int defWidth = 32, int defHeight = 32)
+        public Texture2D GetEntityTextureFromTable(ResourceLocation texId, int defWidth = 32, int defHeight = 32)
         {
             if (EntityTexture2DTable.ContainsKey(texId))
             {
@@ -774,24 +774,6 @@ namespace CraftSharp.Resource
                 Debug.LogWarning($"Unable to find entity texture {texId} from resource packs!");
                 tex = GetMissingEntityTexture(defWidth, defHeight);
             }
-
-            // Register this texture
-            EntityTexture2DTable.Add(texId, tex);
-
-            return tex;
-        }
-
-        /// <summary>
-        /// Load an entity texture from an image file at a given URL.
-        /// </summary>
-        /// <param name="texId">Texture id</param>
-        /// <param name="url">URL to retrieve the image file from</param>
-        public Texture2D LoadEntityTextureFromUrl(ResourceLocation texId, string url)
-        {
-            var tex = new Texture2D(2, 2) { filterMode = FilterMode.Point };
-            
-            // TODO: Implement texture file downloading
-            //tex.LoadImage(bytes);
 
             // Register this texture
             EntityTexture2DTable.Add(texId, tex);
