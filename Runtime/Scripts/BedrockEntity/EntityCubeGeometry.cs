@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public static class EntityCubeGeometry
     {

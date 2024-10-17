@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public class EntityModelBone
     {

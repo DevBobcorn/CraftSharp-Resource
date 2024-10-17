@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public record EntityModelCube
     {

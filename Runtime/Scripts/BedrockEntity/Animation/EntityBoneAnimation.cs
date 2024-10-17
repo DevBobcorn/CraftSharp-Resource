@@ -6,7 +6,7 @@ using Unity.Mathematics;
 using CraftSharp.Molang.Runtime;
 using CraftSharp.Molang.Utils;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public class EntityBoneAnimation
     {

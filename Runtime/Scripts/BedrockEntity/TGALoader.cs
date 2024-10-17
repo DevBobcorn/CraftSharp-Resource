@@ -1,8 +1,7 @@
-using System;
 using System.IO;
 using UnityEngine;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public static class TGALoader
     {

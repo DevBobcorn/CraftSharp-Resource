@@ -16,8 +16,8 @@ namespace CraftSharp.Molang.Parser.Expressions
 		public override IMoValue Evaluate(MoScope scope, MoLangEnvironment environment)
 		{
 			//List<IExpression> p = Args.ToList();
-			MoPath name = Name;/* Name is NameExpression expression ? expression.Name :
-				new MoPath(Name.Evaluate(scope, environment).ToString());*/
+			MoPath name = Name;/* Id is NameExpression expression ? expression.Id :
+				new MoPath(Id.Evaluate(scope, environment).ToString());*/
 
 			IMoValue[] arguments = new IMoValue[Parameters.Length];
 

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public class EntityRenderDefinition
     {
@@ -85,7 +85,7 @@ namespace CraftSharp.Resource
                 animationNames = new();
             }
 
-            var minEnVersion = EntityResourceManager.UNSPECIFIED_VERSION;
+            var minEnVersion = BedrockEntityResourceManager.UNSPECIFIED_VERSION;
             if (desc.Properties.ContainsKey("min_engine_version"))
             {
                 minEnVersion = BedrockVersion.FromString(desc.Properties["min_engine_version"].StringValue);

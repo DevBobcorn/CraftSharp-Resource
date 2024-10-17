@@ -4,10 +4,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using CraftSharp.Resource;
 using System.Linq;
 
-namespace CraftSharp
+namespace CraftSharp.Resource.BedrockEntity
 {
     public struct BedrockVersion : IComparable
     {
@@ -95,7 +94,7 @@ namespace CraftSharp
         }
     }
 
-    public class EntityResourceManager
+    public class BedrockEntityResourceManager
     {
         public static readonly BedrockVersion UNSPECIFIED_VERSION = new(-1, 0, 0);
         private static readonly char SP = Path.DirectorySeparatorChar;
@@ -111,7 +110,7 @@ namespace CraftSharp
         private readonly string resourcePath;
         private readonly string playerModelsPath;
 
-        public EntityResourceManager(string resPath, string playerPath)
+        public BedrockEntityResourceManager(string resPath, string playerPath)
         {
             resourcePath = resPath;
             playerModelsPath = playerPath;
@@ -278,10 +277,9 @@ namespace CraftSharp
                     Debug.LogWarning($"An error occurred when parsing {geoFile}: {e}");
                 }
             }
-        
 
-            // Collect all entity materials
             /*
+            // Collect all entity materials
             HashSet<string> matIds = new();
             foreach (var def in EntityRenderDefinitions.Values)
             {
@@ -291,24 +289,29 @@ namespace CraftSharp
                 }
             }
 
-            string a = Json.Object2Json(matIds.ToDictionary(x => x, x => (object) "cutout_doublesided"));
-            File.WriteAllText(PathHelper.GetExtraDataFile("entity_render_type.json"), a);
+            string a = Json.Object2Json(matIds.ToDictionary(x => x, x => (object) "cutout_culloff"));
+            File.WriteAllText(PathHelper.GetExtraDataFile("entity_bedrock_model_render_type.json.json"), a);
             */
 
             // Read entity material render types
             var matDictionary = Json.ParseJson(File.ReadAllText(
-                    PathHelper.GetExtraDataFile("entity_render_type.json"))).Properties;
+                    PathHelper.GetExtraDataFile("entity_bedrock_model_render_type.json.json"))).Properties;
             
             foreach (var pair in matDictionary)
             {
                 EntityRenderType renderType = pair.Value.StringValue switch
                 {
-                    "solid"              => EntityRenderType.SOLID,
-                    "cutout"             => EntityRenderType.CUTOUT,
-                    "cutout_doublesided" => EntityRenderType.CUTOUT_DOUBLESIDED,
-                    "translucent"        => EntityRenderType.TRANSLUCENT,
+                    "solid"          => EntityRenderType.SOLID,
+                    "cutout"         => EntityRenderType.CUTOUT,
+                    "cutout_culloff" => EntityRenderType.CUTOUT_CULLOFF,
+                    "translucent"    => EntityRenderType.TRANSLUCENT,
 
-                    _                    => EntityRenderType.SOLID
+                    "solid_emissive"          => EntityRenderType.SOLID_EMISSIVE,
+                    "cutout_emissive"         => EntityRenderType.CUTOUT_EMISSIVE,
+                    "cutout_culloff_emissive" => EntityRenderType.CUTOUT_CULLOFF_EMISSIVE,
+                    "translucent_emissive"    => EntityRenderType.TRANSLUCENT_EMISSIVE,
+
+                    _                => EntityRenderType.SOLID
                 };
 
                 MaterialRenderTypes.Add(pair.Key, renderType);

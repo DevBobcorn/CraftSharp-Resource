@@ -7,7 +7,7 @@ using CraftSharp.Molang.Parser;
 using CraftSharp.Molang.Parser.Expressions;
 using CraftSharp.Molang.Utils;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public static class MolangExpressionExtension
     {

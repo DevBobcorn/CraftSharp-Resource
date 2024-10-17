@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public class EntityGeometry
     {
@@ -59,7 +59,7 @@ namespace CraftSharp.Resource
                     else
                         bones = new();
                     
-                    var minEnVersion = EntityResourceManager.UNSPECIFIED_VERSION;
+                    var minEnVersion = BedrockEntityResourceManager.UNSPECIFIED_VERSION;
                     if (itemDesc.Properties.ContainsKey("min_engine_version"))
                         minEnVersion = BedrockVersion.FromString(itemDesc.Properties["min_engine_version"].StringValue);
 
@@ -103,7 +103,7 @@ namespace CraftSharp.Resource
                     else
                         bones = new();
                     
-                    var minEnVersion = EntityResourceManager.UNSPECIFIED_VERSION;
+                    var minEnVersion = BedrockEntityResourceManager.UNSPECIFIED_VERSION;
                     if (item.Properties.ContainsKey("min_engine_version"))
                         minEnVersion = BedrockVersion.FromString(item.Properties["min_engine_version"].StringValue);
 

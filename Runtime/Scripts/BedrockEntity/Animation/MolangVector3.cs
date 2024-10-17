@@ -8,7 +8,7 @@ using CraftSharp.Molang.Runtime;
 using CraftSharp.Molang.Parser;
 using CraftSharp.Molang.Utils;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public class MolangVector3
     {

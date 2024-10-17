@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace CraftSharp.Resource
+namespace CraftSharp.Resource.BedrockEntity
 {
     public enum LoopType
     {
