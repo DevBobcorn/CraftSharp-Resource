@@ -290,12 +290,12 @@ namespace CraftSharp.Resource.BedrockEntity
             }
 
             string a = Json.Object2Json(matIds.ToDictionary(x => x, x => (object) "cutout_culloff"));
-            File.WriteAllText(PathHelper.GetExtraDataFile("entity_bedrock_model_render_type.json.json"), a);
+            File.WriteAllText(PathHelper.GetExtraDataFile("entity_bedrock_model_render_type.json"), a);
             */
 
             // Read entity material render types
             var matDictionary = Json.ParseJson(File.ReadAllText(
-                    PathHelper.GetExtraDataFile("entity_bedrock_model_render_type.json.json"))).Properties;
+                    PathHelper.GetExtraDataFile("entity_bedrock_model_render_type.json"))).Properties;
             
             foreach (var pair in matDictionary)
             {
