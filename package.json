@@ -4,7 +4,7 @@
   "displayName": "CraftSharp Resource",
   "description": "A Unity package for loading resource files from Minecraft JE.",
   "unity": "2022.3",
-  "documentationUrl": "https://github.com/DevBobcorn/CornModel",
+  "documentationUrl": "https://github.com/DevBobcorn/CraftSharp-Resource",
   "author": {
     "name": "DevBobcorn",
     "email": "DevBobcorn@outlook.com",
