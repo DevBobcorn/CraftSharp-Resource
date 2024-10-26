@@ -16,7 +16,7 @@ namespace CraftSharp.Resource
             packName = name;
 
             // Read meta file...
-            DirectoryInfo packDir = new DirectoryInfo(PathHelper.GetPackDirectoryNamed(packName));
+            var packDir = new DirectoryInfo(PathHelper.GetPackDirectoryNamed(packName));
 
             if (packDir.Exists)
             {
@@ -74,7 +74,7 @@ namespace CraftSharp.Resource
                             foreach (var texFile in texturesDir.GetFiles("*.png", SearchOption.AllDirectories)) // Allow sub folders...
                             {
                                 string texId = texFile.FullName.Replace('\\', '/');
-                                texId = texId.Substring(texDirLen); // e.g. 'block/grass_block_top.png'
+                                texId = texId[texDirLen..]; // e.g. 'block/grass_block_top.png'
 
                                 if (texId.StartsWith("effect/") || texId.StartsWith("font/") ||
                                     texId.StartsWith("gui/")    || texId.StartsWith("misc/") ||
@@ -84,18 +84,11 @@ namespace CraftSharp.Resource
                                     continue;
                                 }
 
-                                texId = texId.Substring(0, texId.LastIndexOf('.')); // e.g. 'block/grass_block_top'
+                                texId = texId[..texId.LastIndexOf('.')]; // e.g. 'block/grass_block_top'
+                                var identifier = new ResourceLocation(nameSpace, texId);
 
-                                ResourceLocation identifier = new ResourceLocation(nameSpace, texId);
-                                if (!manager.TextureFileTable.ContainsKey(identifier))
-                                {
-                                    // This texture is not provided by previous resource packs, so add it here...
-                                    manager.TextureFileTable.Add(identifier, texFile.FullName.Replace('\\', '/'));
-                                }
-                                else // Overwrite it
-                                {
-                                    manager.TextureFileTable[identifier] = texFile.FullName.Replace('\\', '/');
-                                }
+                                // Add or update this entry
+                                manager.TextureFileTable[identifier] = texFile.FullName.Replace('\\', '/');
                             }
                         }
 
@@ -108,18 +101,12 @@ namespace CraftSharp.Resource
                             foreach (var modelFile in modelsDir.GetFiles("block/*.json", SearchOption.AllDirectories)) // Allow sub folders...
                             {
                                 string modelId = modelFile.FullName.Replace('\\', '/');
-                                modelId = modelId.Substring(modelDirLen); // e.g. 'block/acacia_button.json'
-                                modelId = modelId.Substring(0, modelId.LastIndexOf('.')); // e.g. 'block/acacia_button'
-                                ResourceLocation identifier = new ResourceLocation(nameSpace, modelId);
-                                if (!manager.BlockModelFileTable.ContainsKey(identifier))
-                                {
-                                    // This model is not provided by previous resource packs, so add it here...
-                                    manager.BlockModelFileTable.Add(identifier, modelFile.FullName.Replace('\\', '/'));
-                                }
-                                else // Overwrite it
-                                {
-                                    manager.BlockModelFileTable[identifier] = modelFile.FullName.Replace('\\', '/');
-                                }
+                                modelId = modelId[modelDirLen..]; // e.g. 'block/acacia_button.json'
+                                modelId = modelId[..modelId.LastIndexOf('.')]; // e.g. 'block/acacia_button'
+                                var identifier = new ResourceLocation(nameSpace, modelId);
+
+                                // Add or update this entry
+                                manager.BlockModelFileTable[identifier] = modelFile.FullName.Replace('\\', '/');
                             }
                         }
 
@@ -128,19 +115,12 @@ namespace CraftSharp.Resource
                             foreach (var modelFile in modelsDir.GetFiles("item/*.json", SearchOption.AllDirectories)) // Allow sub folders...
                             {
                                 string modelId = modelFile.FullName.Replace('\\', '/');
-                                modelId = modelId.Substring(modelDirLen); // e.g. 'item/acacia_boat.json'
-                                modelId = modelId.Substring(0, modelId.LastIndexOf('.')); // e.g. 'item/acacia_boat'
-                                ResourceLocation identifier = new ResourceLocation(nameSpace, modelId);
+                                modelId = modelId[modelDirLen..]; // e.g. 'item/acacia_boat.json'
+                                modelId = modelId[..modelId.LastIndexOf('.')]; // e.g. 'item/acacia_boat'
+                                var identifier = new ResourceLocation(nameSpace, modelId);
 
-                                if (!manager.ItemModelFileTable.ContainsKey(identifier))
-                                {
-                                    // This model is not provided by previous resource packs, so add it here...
-                                    manager.ItemModelFileTable.Add(identifier, modelFile.FullName.Replace('\\', '/'));
-                                }
-                                else // Overwrite it
-                                {
-                                    manager.ItemModelFileTable[identifier] = modelFile.FullName.Replace('\\', '/');
-                                }
+                                // Add or update this entry
+                                manager.ItemModelFileTable[identifier] = modelFile.FullName.Replace('\\', '/');
                             }
                         }
 
@@ -153,18 +133,30 @@ namespace CraftSharp.Resource
                             foreach (var statesFile in blockstatesDir.GetFiles("*.json", SearchOption.TopDirectoryOnly)) // No sub folders...
                             {
                                 string blockId = statesFile.FullName.Replace('\\', '/');
-                                blockId = blockId.Substring(blockstateDirLen); // e.g. 'grass_block.json'
-                                blockId = blockId.Substring(0, blockId.LastIndexOf('.')); // e.g. 'grass_block'
-                                ResourceLocation identifier = new ResourceLocation(nameSpace, blockId);
-                                if (!manager.BlockStateFileTable.ContainsKey(identifier))
-                                {
-                                    // This file is not provided by previous resource packs, so add it here...
-                                    manager.BlockStateFileTable.Add(identifier, statesFile.FullName.Replace('\\', '/'));
-                                }
-                                else // Overwrite it
-                                {
-                                    manager.BlockStateFileTable[identifier] = statesFile.FullName.Replace('\\', '/');
-                                }
+                                blockId = blockId[blockstateDirLen..]; // e.g. 'grass_block.json'
+                                blockId = blockId[..blockId.LastIndexOf('.')]; // e.g. 'grass_block'
+                                var identifier = new ResourceLocation(nameSpace, blockId);
+
+                                // Add or update this entry
+                                manager.BlockStateFileTable[identifier] = statesFile.FullName.Replace('\\', '/');
+                            }
+                        }
+
+                        // Load and store all particle files...
+                        var particlesDir = new DirectoryInfo($"{nameSpaceDir}/particles/");
+                        int particleDirLen = particlesDir.FullName.Length;
+
+                        if (particlesDir.Exists)
+                        {
+                            foreach (var particleFile in particlesDir.GetFiles("*.json", SearchOption.TopDirectoryOnly)) // No sub folders...
+                            {
+                                string particleTypeId = particleFile.FullName.Replace('\\', '/');
+                                particleTypeId = particleTypeId[particleDirLen..]; // e.g. 'campfire_cosy_smoke.json'
+                                particleTypeId = particleTypeId[..particleTypeId.LastIndexOf('.')]; // e.g. 'campfire_cosy_smoke'
+                                var identifier = new ResourceLocation(nameSpace, particleTypeId);
+
+                                // Add or update this entry
+                                manager.ParticleFileTable[identifier] = particleFile.FullName.Replace('\\', '/');
                             }
                         }
                     }

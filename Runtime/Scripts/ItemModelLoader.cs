@@ -118,9 +118,8 @@ namespace CraftSharp.Resource
             // Check if this model is loaded already...
             if (manager.RawItemModelTable.ContainsKey(identifier))
                 return manager.RawItemModelTable[identifier];
-            
-            var modelFilePath = manager.ItemModelFileTable.GetValueOrDefault(identifier, string.Empty);            
-            if (modelFilePath != string.Empty && File.Exists(modelFilePath))
+                 
+            if (manager.ItemModelFileTable.TryGetValue(identifier, out string modelFilePath))
             {
                 JsonModel model = new JsonModel();
 

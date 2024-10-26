@@ -26,8 +26,7 @@ namespace CraftSharp.Resource
             if (manager.BlockModelTable.ContainsKey(identifier))
                 return manager.BlockModelTable[identifier];
             
-            var modelFilePath = manager.BlockModelFileTable.GetValueOrDefault(identifier, string.Empty);
-            if (modelFilePath != string.Empty && File.Exists(modelFilePath))
+            if (manager.BlockModelFileTable.TryGetValue(identifier, out string modelFilePath))
             {
                 JsonModel model = new JsonModel();
 

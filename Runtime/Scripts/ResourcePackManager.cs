@@ -55,6 +55,14 @@ namespace CraftSharp.Resource
         public int GeneratedItemModelPrecision { get; set; } = 16;
         public int GeneratedItemModelThickness { get; set; } =  1;
 
+        // Identidier -> Pariticle json file path
+        public readonly Dictionary<ResourceLocation, string> ParticleFileTable = new();
+
+        // Particle numeral -> Particle mesh array
+        public readonly Dictionary<int, Mesh[]> particleMesh = new();
+
+        public readonly ParticleSpritesLoader ParticleSpritesLoader;
+
         private readonly List<ResourcePack> packs = new();
 
         public static readonly ResourcePackManager Instance = new();
@@ -67,6 +75,9 @@ namespace CraftSharp.Resource
 
             // Item model loader
             ItemModelLoader = new ItemModelLoader(this);
+
+            // Particle sprites loader
+            ParticleSpritesLoader = new ParticleSpritesLoader(this);
         }
 
         public void AddPack(ResourcePack pack) => packs.Add(pack);
@@ -91,7 +102,7 @@ namespace CraftSharp.Resource
             World.FoliageColormapPixels = new Color32[]{ };
         }
 
-        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus, bool preloadEntityTextures = false)
+        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus, bool buildParticleMeshes = false, bool preloadEntityTextures = false)
         {
             // Gather all textures and model files
             updateStatus("resource.info.gather_resource");
@@ -134,6 +145,13 @@ namespace CraftSharp.Resource
             updateStatus("resource.info.build_item_geometry");
             BuildItemGeometries();
 
+            if (buildParticleMeshes)
+            {
+                // Load particle sprites and build meshes (on main thread)...
+                updateStatus("resource.info.build_particle_mesh");
+                Loom.QueueOnMainThread(BuildParticleMeshes);
+            }
+
             // Perform integrity check...
             /*
             var statesTable = BlockStatePalette.INSTANCE.StatesTable;
@@ -153,7 +171,8 @@ namespace CraftSharp.Resource
 
                 // Load entity textures (on main thread)...
                 updateStatus("resource.info.preload_entity_texture");
-                Loom.QueueOnMainThread(() => {
+                Loom.QueueOnMainThread(() =>
+                {
                     Loom.Current.StartCoroutine(PreloadEntityTextures(textureFlag));
                 });
 
@@ -275,6 +294,25 @@ namespace CraftSharp.Resource
                 else
                 {
                     Debug.LogWarning($"Item model not assigned for {itemModelId}");
+                }
+            }
+        }
+
+        public void BuildParticleMeshes()
+        {
+            // Load all particle sprite files
+            foreach (var numId in ParticleTypePalette.INSTANCE.GetAllNumIds())
+            {
+                var particle = ParticleTypePalette.INSTANCE.GetByNumId(numId);
+                var particleTypeId = particle.TypeId;
+
+                if (ParticleFileTable.ContainsKey(particleTypeId))
+                {
+                    ParticleSpritesLoader.LoadAndBuildParticleMeshes(particleTypeId);
+                }
+                else
+                {
+                    //Debug.LogWarning($"Particle sprites not assigned for {particleTypeId}");
                 }
             }
         }
