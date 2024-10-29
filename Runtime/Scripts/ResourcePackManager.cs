@@ -58,10 +58,20 @@ namespace CraftSharp.Resource
         // Identidier -> Pariticle json file path
         public readonly Dictionary<ResourceLocation, string> ParticleFileTable = new();
 
-        // Particle numeral -> Particle mesh array
-        public readonly Dictionary<int, Mesh[]> particleMesh = new();
+        public const int PARTICLE_ATLAS_SIZE = 1024;
 
-        public readonly ParticleSpritesLoader ParticleSpritesLoader;
+        // Particle atlas
+        private Texture2D? particleAtlas;
+
+        // Particle type id -> meshes for its frames
+        public readonly Dictionary<ResourceLocation, Mesh[]> ParticleMeshesTable = new();
+
+        public const int ATLAS_SIZE = 2048;
+
+        // Block/item atlas
+        // atlasArrays[0]: Not mipped
+        // atlasArrays[1]: Mipped
+        private readonly Texture2DArray[] atlasArrays = new Texture2DArray[2];
 
         private readonly List<ResourcePack> packs = new();
 
@@ -75,9 +85,6 @@ namespace CraftSharp.Resource
 
             // Item model loader
             ItemModelLoader = new ItemModelLoader(this);
-
-            // Particle sprites loader
-            ParticleSpritesLoader = new ParticleSpritesLoader(this);
         }
 
         public void AddPack(ResourcePack pack) => packs.Add(pack);
@@ -94,6 +101,7 @@ namespace CraftSharp.Resource
             RawItemModelTable.Clear();
             ItemModelTable.Clear();
             GeneratedItemModels.Clear();
+            ParticleMeshesTable.Clear();
             EntityTexture2DTable.Clear();
 
             // And clear up colormap data
@@ -102,7 +110,7 @@ namespace CraftSharp.Resource
             World.FoliageColormapPixels = new Color32[]{ };
         }
 
-        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus, bool buildParticleMeshes = false, bool preloadEntityTextures = false)
+        public void LoadPacks(DataLoadFlag flag, Action<string> updateStatus, bool loadParticles = false, bool preloadEntityTextures = false)
         {
             // Gather all textures and model files
             updateStatus("resource.info.gather_resource");
@@ -110,7 +118,7 @@ namespace CraftSharp.Resource
 
             var textureFlag = new DataLoadFlag();
 
-            // Load texture atlas (on main thread)...
+            // Generate texture atlas (on main thread)...
             updateStatus("resource.info.create_texture");
             Loom.QueueOnMainThread(() => {
                 Loom.Current.StartCoroutine(GenerateAtlas(textureFlag));
@@ -145,11 +153,17 @@ namespace CraftSharp.Resource
             updateStatus("resource.info.build_item_geometry");
             BuildItemGeometries();
 
-            if (buildParticleMeshes)
+            if (loadParticles)
             {
-                // Load particle sprites and build meshes (on main thread)...
+                textureFlag.Finished = false;
+
+                // Generate particle texture atlas and build meshes (on main thread)...
                 updateStatus("resource.info.build_particle_mesh");
-                Loom.QueueOnMainThread(BuildParticleMeshes);
+                Loom.QueueOnMainThread(() => {
+                    Loom.Current.StartCoroutine(GenerateParticleAtlasAndBuildMeshes(textureFlag));
+                });
+
+                while (!textureFlag.Finished) { Thread.Sleep(100); }
             }
 
             // Perform integrity check...
@@ -298,23 +312,100 @@ namespace CraftSharp.Resource
             }
         }
 
-        public void BuildParticleMeshes()
+        public Texture2D GetParticleAtlas()
         {
-            // Load all particle sprite files
-            foreach (var numId in ParticleTypePalette.INSTANCE.GetAllNumIds())
-            {
-                var particle = ParticleTypePalette.INSTANCE.GetByNumId(numId);
-                var particleTypeId = particle.TypeId;
+            return particleAtlas!;
+        }
 
-                if (ParticleFileTable.ContainsKey(particleTypeId))
+        private IEnumerator GenerateParticleAtlasAndBuildMeshes(DataLoadFlag atlasGenFlag)
+        {
+            ParticleMeshesTable.Clear(); // Clear previously loaded table...
+
+            var texDict = TextureFileTable;
+            var textureIdSet = new HashSet<ResourceLocation>();
+            var textureLists = new Dictionary<ResourceLocation, ResourceLocation[]>();
+
+            // Collect referenced textures
+            var gatherTexturesTask = Task.Run(() =>
+            {
+                foreach (var (particleTypeId, particleFilePath) in ParticleFileTable)
                 {
-                    ParticleSpritesLoader.LoadAndBuildParticleMeshes(particleTypeId);
+                    var particleText = File.ReadAllText(particleFilePath);
+                    var modelData = Json.ParseJson(particleText);
+
+                    if (modelData.Properties.TryGetValue("textures", out var textureIds))
+                    {
+                        var spriteFrameCount = textureIds.DataArray.Count;
+
+                        textureLists[particleTypeId] = new ResourceLocation[spriteFrameCount];
+
+                        int frame = 0;
+
+                        foreach (var textureIdElem in textureIds.DataArray)
+                        {
+                            var textureId = ResourceLocation.FromString(textureIdElem.StringValue);
+                            // Prepend "particle" to texture identifier path
+                            textureId = new ResourceLocation(textureId.Namespace, $"particle/{textureId.Path}");
+
+                            textureIdSet.Add(textureId);
+                            textureLists[particleTypeId][frame++] = textureId;
+                        }
+                    }
                 }
-                else
+            });
+
+            while (!gatherTexturesTask.IsCompleted) yield return null;
+
+            int totalCount = textureIdSet.Count;
+            int count = 0;
+
+            var ids = new ResourceLocation[totalCount];
+            var textures = new Texture2D[totalCount];
+
+            foreach (var textureId in textureIdSet) // Load texture files...
+            {
+                var texFilePath = texDict[textureId];
+                ids[count] = textureId;
+
+                var texturePath = TextureFileTable[textureId];
+                var texture = new Texture2D(2, 2)
                 {
-                    //Debug.LogWarning($"Particle sprites not assigned for {particleTypeId}");
-                }
+                    filterMode = FilterMode.Point
+                };
+                texture.LoadImage(File.ReadAllBytes(texturePath));
+
+                textures[count++] = texture;
+
+                if (count % 10 == 0) yield return null;
             }
+
+            particleAtlas = new Texture2D(PARTICLE_ATLAS_SIZE, PARTICLE_ATLAS_SIZE)
+            {
+                filterMode = FilterMode.Point
+            };
+
+            // Pack all particle textures onto the atlas
+            Rect[] rects = particleAtlas.PackTextures(textures, 0, ATLAS_SIZE, false);
+            Dictionary<ResourceLocation, Mesh> textureId2Mesh = new();
+
+            // Then build meshes for each texture
+            for (int textureIndex = 0; textureIndex < rects.Length; textureIndex++)
+            {
+                var meshForTexture = ParticleMeshBuilder.BuildQuadMesh(rects[textureIndex]);
+
+                textureId2Mesh.Add(ids[textureIndex], meshForTexture);
+            }
+
+            // Save this somewhere for debugging
+            File.WriteAllBytes(PathHelper.GetPackDirectoryNamed("particle_atlas.png"), particleAtlas.EncodeToPNG());
+
+            foreach (var (particleTypeId, frameTextureIds) in textureLists)
+            {
+                ParticleMeshesTable[particleTypeId] = frameTextureIds.Select(x => textureId2Mesh[x]).ToArray();
+                Debug.Log($"{particleTypeId} -> {string.Join(", ", frameTextureIds)}");
+            }
+
+            atlasGenFlag.Finished = true;
         }
 
         private readonly Dictionary<ResourceLocation, TextureInfo> texAtlasTable = new();
@@ -367,16 +458,10 @@ namespace CraftSharp.Resource
             return texAtlasTable[ResourceLocation.INVALID];
         }
 
-        // atlasArrays[0]: Not mipped
-        // atlasArrays[1]: Mipped
-        private readonly Texture2DArray?[] atlasArrays = new Texture2DArray?[2];
-
         public Texture2DArray GetAtlasArray(bool mipped)
         {
             return mipped ? atlasArrays[1]! : atlasArrays[0]!;
         }
-
-        public const int ATLAS_SIZE = 2048;
 
         private record TextureAnimationInfo
         {
@@ -560,10 +645,11 @@ namespace CraftSharp.Resource
             var modelFilePaths = BlockModelFileTable.Values.ToList();
             modelFilePaths.AddRange(ItemModelFileTable.Values);
             
-            var gatherTexturesTask = Task.Run(() => {
-                foreach (var modelFile in modelFilePaths)
+            var gatherTexturesTask = Task.Run(() =>
+            {
+                foreach (var modelFilePath in modelFilePaths)
                 {
-                    var model = Json.ParseJson(File.ReadAllText(modelFile));
+                    var model = Json.ParseJson(File.ReadAllText(modelFilePath));
 
                     if (model.Properties.ContainsKey("textures"))
                     {
@@ -617,12 +703,11 @@ namespace CraftSharp.Resource
             textureInfos[count] = (GetMissingTexture(), null);
             count++;
 
-            foreach (var texId in textureIdSet) // Load texture files...
+            foreach (var textureId in textureIdSet) // Load texture files...
             {
-                var texFilePath = texDict[texId];
-                ids[count] = texId;
-                //Debug.Log($"Loading {texId} from {texFilePath}");
-                textureInfos[count++] = LoadSingleTexture(texId, texFilePath);
+                var texFilePath = texDict[textureId];
+                ids[count] = textureId;
+                textureInfos[count++] = LoadSingleTexture(textureId, texFilePath);
 
                 if (count % 5 == 0) yield return null;
             }
