@@ -402,7 +402,7 @@ namespace CraftSharp.Resource
             foreach (var (particleTypeId, frameTextureIds) in textureLists)
             {
                 ParticleMeshesTable[particleTypeId] = frameTextureIds.Select(x => textureId2Mesh[x]).ToArray();
-                Debug.Log($"{particleTypeId} -> {string.Join(", ", frameTextureIds)}");
+                //Debug.Log($"{particleTypeId} -> {string.Join(", ", frameTextureIds)}");
             }
 
             atlasGenFlag.Finished = true;
