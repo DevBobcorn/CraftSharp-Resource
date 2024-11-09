@@ -94,8 +94,14 @@ namespace CraftSharp.Resource
             // Clear up pack list
             packs.Clear();
 
-            // Clear up loaded tables
+            // Clear up loaded file tables
             TextureFileTable.Clear();
+            BlockModelFileTable.Clear();
+            ItemModelFileTable.Clear();
+            BlockStateFileTable.Clear();
+            ParticleFileTable.Clear();
+
+            // Clear up loaded data tables
             BlockModelTable.Clear();
             StateModelTable.Clear();
             RawItemModelTable.Clear();
