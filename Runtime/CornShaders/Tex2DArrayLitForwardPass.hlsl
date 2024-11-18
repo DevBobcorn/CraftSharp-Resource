@@ -68,12 +68,12 @@ void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 pos
 {
 	float3 foggedColor = color;
 	
-    #if !defined(_DISABLE_FOG) && !defined(_ENVIRO3_FOG)
+    #if !defined(_DISABLE_FOG_AND_GI) && !defined(_ENVIRO3_FOG)
         foggedColor = MixFog(color.rgb, fogFactor);
     #endif
 
     #ifdef _SURFACE_TYPE_TRANSPARENT
-    #if !defined(_DISABLE_FOG) && defined(_ENVIRO3_FOG)
+    #if !defined(_DISABLE_FOG_AND_GI) && defined(_ENVIRO3_FOG)
         if(any(_EnviroFogParameters) > 0)
         {
             foggedColor.rgb = ApplyFogAndVolumetricLights(color.rgb, positionCS, positionWS, 0);
@@ -120,7 +120,9 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
         inputData.vertexLighting = half3(0, 0, 0);
     #endif
 
-    #if defined(DYNAMICLIGHTMAP_ON)
+    #if defined(_DISABLE_FOG_AND_GI)
+        inputData.bakedGI = 0;
+    #elif defined(DYNAMICLIGHTMAP_ON)
         inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.dynamicLightmapUV, input.vertexSH, inputData.normalWS);
     #else
         inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, inputData.normalWS);
@@ -229,6 +231,7 @@ void LitPassFragmentSimple(
     #endif
 
     half4 color = UniversalFragmentBlinnPhong(inputData, surfaceData);
+    //half4 color = half4(1, 0, 0, 0);
 
     ApplyFog(color.rgb, inputData.fogCoord, input.positionCS, input.positionWS);
 

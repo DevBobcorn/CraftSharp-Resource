@@ -101,7 +101,7 @@ Shader "CornShader/Lit"
             #pragma shader_feature_local_fragment _ _SPECGLOSSMAP _SPECULAR_COLOR
             //#pragma shader_feature_local_fragment _GLOSSINESS_FROM_BASE_ALPHA
             // Use multi_compile instead of shader_feature to avoid variants being stripped out in builds
-            #pragma multi_compile_local_fragment _ _DISABLE_FOG
+            #pragma multi_compile_local_fragment _ _DISABLE_FOG_AND_GI
 
             // -------------------------------------
             // Universal Pipeline keywords
