@@ -214,7 +214,10 @@ namespace CraftSharp.Resource
                     var renderType =
                         BlockStatePalette.INSTANCE.RenderTypeTable.GetValueOrDefault(blockId, RenderType.SOLID);
 
-                    StateModelLoader.LoadBlockStateModel(blockId, BlockStateFileTable[blockId], renderType);
+                    var offsetType =
+                        BlockStatePalette.INSTANCE.OffsetTypeTable.GetValueOrDefault(blockId, OffsetType.NONE);
+
+                    StateModelLoader.LoadBlockStateModel(blockId, BlockStateFileTable[blockId], renderType, offsetType);
                 }
                 else
                 {

@@ -14,7 +14,7 @@ namespace CraftSharp.Resource
             this.manager = manager;
         }
 
-        public void LoadBlockStateModel(ResourceLocation blockId, string path, RenderType renderType)
+        public void LoadBlockStateModel(ResourceLocation blockId, string path, RenderType renderType, OffsetType offsetType)
         {
             if (File.Exists(path))
             {
@@ -23,12 +23,12 @@ namespace CraftSharp.Resource
                 if (stateData.Properties.ContainsKey("variants"))
                 {
                     //Debug.Log("Load variant state model: " + blockId.ToString());
-                    LoadVariantsFormat(stateData.Properties["variants"].Properties, blockId, renderType, manager);
+                    LoadVariantsFormat(stateData.Properties["variants"].Properties, blockId, renderType, offsetType, manager);
                 }
                 else if (stateData.Properties.ContainsKey("multipart"))
                 {
                     //Debug.Log("Load multipart state model: " + blockId.ToString());
-                    LoadMultipartFormat(stateData.Properties["multipart"].DataArray, blockId, renderType, manager);
+                    LoadMultipartFormat(stateData.Properties["multipart"].DataArray, blockId, renderType, offsetType, manager);
                 }
                 else
                     Debug.LogWarning("Invalid state model file: " + path);
@@ -38,7 +38,8 @@ namespace CraftSharp.Resource
                 Debug.LogWarning("Cannot find block state model file: " + path);
         }
 
-        private void LoadVariantsFormat(Dictionary<string, Json.JSONData> variants, ResourceLocation blockId, RenderType renderType, ResourcePackManager manager)
+        private void LoadVariantsFormat(Dictionary<string, Json.JSONData> variants, ResourceLocation blockId,
+                RenderType renderType, OffsetType offsetType, ResourcePackManager manager)
         {
             foreach (var variant in variants)
             {
@@ -66,13 +67,13 @@ namespace CraftSharp.Resource
                     if (!manager.StateModelTable.ContainsKey(stateId) && conditions.Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                     {
                         // Then this block state belongs to the current variant...
-                        manager.StateModelTable.Add(stateId, new(results, renderType));
+                        manager.StateModelTable.Add(stateId, new(results, renderType, offsetType));
                     }
                 }
             }
         }
 
-        private void LoadMultipartFormat(List<Json.JSONData> parts, ResourceLocation blockId, RenderType renderType, ResourcePackManager manager)
+        private void LoadMultipartFormat(List<Json.JSONData> parts, ResourceLocation blockId, RenderType renderType, OffsetType offsetType, ResourcePackManager manager)
         {
             var buildersList = new Dictionary<int, BlockGeometryBuilder>();
             foreach (var stateId in BlockStatePalette.INSTANCE.GetAllNumIds(blockId))
@@ -143,7 +144,7 @@ namespace CraftSharp.Resource
             // Get the table into manager...
             foreach (var resultItem in buildersList)
             {
-                manager.StateModelTable.Add(resultItem.Key, new(new BlockGeometry[]{ resultItem.Value.Build() }.ToList(), renderType));
+                manager.StateModelTable.Add(resultItem.Key, new(new BlockGeometry[]{ resultItem.Value.Build() }.ToList(), renderType, offsetType));
             }
         }
     }

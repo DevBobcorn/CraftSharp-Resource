@@ -6,11 +6,13 @@ namespace CraftSharp.Resource
     {
         public readonly BlockGeometry[] Geometries;
         public readonly RenderType RenderType;
+        public readonly OffsetType OffsetType;
 
-        public BlockStateModel(List<BlockGeometry> geometries, RenderType renderType)
+        public BlockStateModel(List<BlockGeometry> geometries, RenderType renderType, OffsetType offsetType)
         {
             Geometries = geometries.ToArray();
             RenderType = renderType;
+            OffsetType = offsetType;
         }
     }
 }
