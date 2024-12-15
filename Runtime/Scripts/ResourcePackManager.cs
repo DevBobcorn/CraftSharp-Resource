@@ -66,7 +66,7 @@ namespace CraftSharp.Resource
         // Particle type id -> meshes for its frames
         public readonly Dictionary<ResourceLocation, Mesh[]> ParticleMeshesTable = new();
 
-        public const int ATLAS_SIZE = 2048;
+        public const int ATLAS_SIZE = 1024;
 
         // Block/item atlas
         // atlasArrays[0]: Not mipped
