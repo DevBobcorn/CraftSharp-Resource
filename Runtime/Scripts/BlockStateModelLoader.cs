@@ -7,6 +7,7 @@ namespace CraftSharp.Resource
 {
     public class BlockStateModelLoader
     {
+        private static readonly string PARTICLE_TEXTURE_NAME = "particle";
         private readonly ResourcePackManager manager;
 
         public BlockStateModelLoader(ResourcePackManager manager)
@@ -44,19 +45,24 @@ namespace CraftSharp.Resource
             foreach (var variant in variants)
             {
                 var conditions = BlockStatePredicate.FromString(variant.Key);
+                var particleTexture = ResourceLocation.INVALID;
 
                 // Block states can contain properties don't make a difference to their block geometry list
                 // In this way they can share a single copy of geometry list...
-                List<BlockGeometry> results = new List<BlockGeometry>();
+                List<BlockGeometry> results = new();
                 if (variant.Value.Type == Json.JSONData.DataType.Array) // A list...
                 {
                     foreach (var wrapperData in variant.Value.DataArray)
                     {
-                        results.Add(new BlockGeometryBuilder(BlockModelWrapper.FromJson(manager, wrapperData)).Build());
+                        var variantWrapper = BlockModelWrapper.FromJson(manager, wrapperData);
+                        particleTexture = variantWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
+                        results.Add(new BlockGeometryBuilder(variantWrapper).Build());
                     }
                 }
                 else // Only a single item...
                 {
+                    var variantWrapper = BlockModelWrapper.FromJson(manager, variant.Value);
+                    particleTexture = variantWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
                     results.Add(new BlockGeometryBuilder(BlockModelWrapper.FromJson(manager, variant.Value)).Build());
                 }
 
@@ -67,7 +73,7 @@ namespace CraftSharp.Resource
                     if (!manager.StateModelTable.ContainsKey(stateId) && conditions.Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                     {
                         // Then this block state belongs to the current variant...
-                        manager.StateModelTable.Add(stateId, new(results, renderType, offsetType));
+                        manager.StateModelTable.Add(stateId, new(results, renderType, offsetType, particleTexture));
                     }
                 }
             }
@@ -80,6 +86,8 @@ namespace CraftSharp.Resource
             {
                 buildersList.Add(stateId, new BlockGeometryBuilder());
             }
+
+            var particleTexture = ResourceLocation.INVALID;
 
             foreach (var part in parts)
             {
@@ -97,6 +105,8 @@ namespace CraftSharp.Resource
                     {
                         partWrapper = BlockModelWrapper.FromJson(manager, part.Properties["apply"]);
                     }
+
+                    particleTexture = partWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
 
                     if (part.Properties.ContainsKey("when"))
                     {
@@ -144,7 +154,7 @@ namespace CraftSharp.Resource
             // Get the table into manager...
             foreach (var resultItem in buildersList)
             {
-                manager.StateModelTable.Add(resultItem.Key, new(new BlockGeometry[]{ resultItem.Value.Build() }.ToList(), renderType, offsetType));
+                manager.StateModelTable.Add(resultItem.Key, new(new BlockGeometry[]{ resultItem.Value.Build() }.ToList(), renderType, offsetType, particleTexture));
             }
         }
     }

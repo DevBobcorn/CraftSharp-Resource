@@ -172,16 +172,12 @@ namespace CraftSharp.Resource
                 while (!textureFlag.Finished) { Thread.Sleep(100); }
             }
 
-            // Perform integrity check...
             /*
-            var statesTable = BlockStatePalette.INSTANCE.StatesTable;
- 
-            foreach (var stateItem in statesTable)
+            var statePalette = BlockStatePalette.INSTANCE;
+
+            foreach (var stateModel in StateModelTable)
             {
-                if (!StateModelTable.ContainsKey(stateItem.Key))
-                {
-                    Debug.LogWarning($"Model for {stateItem.Value}(state Id {stateItem.Key}) not loaded!");
-                }
+                Debug.Log($"Particle texture for {statePalette.GetByNumId(stateModel.Key)}: {stateModel.Value.ParticleTexture}");
             }
             */
 
