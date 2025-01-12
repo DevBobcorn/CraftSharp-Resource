@@ -32,13 +32,13 @@ struct Varyings
         half4 tangentWS                : TEXCOORD3;    // xyz: tangent, w: viewDir.y
         half4 bitangentWS              : TEXCOORD4;    // xyz: bitangent, w: viewDir.z
     #else
-        half3  normalWS                : TEXCOORD2;
+        half3 normalWS                 : TEXCOORD2;
     #endif
 
     #ifdef _ADDITIONAL_LIGHTS_VERTEX
         half4 fogFactorAndVertexLight  : TEXCOORD5; // x: fogFactor, yzw: vertex light
     #else
-        half  fogFactor                 : TEXCOORD5;
+        half  fogFactor                : TEXCOORD5;
     #endif
 
     #if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)

@@ -415,6 +415,31 @@ namespace CraftSharp.Resource
 
         private readonly Dictionary<ResourceLocation, TextureInfo> texAtlasTable = new();
 
+        private Vector4 FULL_SIDE_UV = new(0F, 0F, 1F, 1F);
+
+        public float3[] GetParticleUVs(int stateId)
+        {
+            ResourceLocation identifier;
+
+            if (StateModelTable.TryGetValue(stateId, out var stateModel))
+            {
+                identifier = stateModel.ParticleTexture;
+            }
+            else // Use missing texture
+            {
+                identifier = ResourceLocation.INVALID;
+            }
+
+            var info = GetTextureInfo(identifier);
+            if (info.frameCount > 1) // This texture is animated
+            {
+                float oneX = info.bounds.width / info.framePerRow; // Frame size on texture atlas array
+
+                return GetUVsAt(info.bounds, info.index, oneX, oneX, FULL_SIDE_UV, 0);
+            }
+            return GetUVsAt(info.bounds, info.index, info.bounds.width, info.bounds.height, FULL_SIDE_UV, 0);
+        }
+
         /// <summary>
         /// Get texture uvs (x, y, depth in atlas array) and texture animation info (frame count, frame interval, frame size, frame per row)
         /// </summary>
