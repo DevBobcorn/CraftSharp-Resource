@@ -415,9 +415,7 @@ namespace CraftSharp.Resource
 
         private readonly Dictionary<ResourceLocation, TextureInfo> texAtlasTable = new();
 
-        private Vector4 FULL_SIDE_UV = new(0F, 0F, 1F, 1F);
-
-        public float3[] GetParticleUVs(int stateId)
+        public float3[] GetParticleUVs(int stateId, Vector4 part)
         {
             ResourceLocation identifier;
 
@@ -435,9 +433,9 @@ namespace CraftSharp.Resource
             {
                 float oneX = info.bounds.width / info.framePerRow; // Frame size on texture atlas array
 
-                return GetUVsAt(info.bounds, info.index, oneX, oneX, FULL_SIDE_UV, 0);
+                return GetUVsAt(info.bounds, info.index, oneX, oneX, part, 0);
             }
-            return GetUVsAt(info.bounds, info.index, info.bounds.width, info.bounds.height, FULL_SIDE_UV, 0);
+            return GetUVsAt(info.bounds, info.index, info.bounds.width, info.bounds.height, part, 0);
         }
 
         /// <summary>
