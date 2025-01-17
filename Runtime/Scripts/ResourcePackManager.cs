@@ -68,6 +68,8 @@ namespace CraftSharp.Resource
 
         public const int ATLAS_SIZE = 1024;
 
+        public bool Loaded { get; private set; } = false;
+
         // Block/item atlas
         // atlasArrays[0]: Not mipped
         // atlasArrays[1]: Mipped
@@ -91,6 +93,8 @@ namespace CraftSharp.Resource
 
         public void ClearPacks()
         {
+            Loaded = false;
+
             // Clear up pack list
             packs.Clear();
 
@@ -198,6 +202,8 @@ namespace CraftSharp.Resource
             updateStatus("resource.info.resource_loaded");
 
             flag.Finished = true;
+
+            Loaded = true;
         }
 
         public void BuildStateGeometries()
@@ -481,7 +487,7 @@ namespace CraftSharp.Resource
                 return texAtlasTable[identifier];
             
             Debug.Log($"Texture {identifier} is not in atlas!");
-            
+
             // Return missing no texture
             return texAtlasTable[ResourceLocation.INVALID];
         }
@@ -811,7 +817,7 @@ namespace CraftSharp.Resource
 
                 for (int i = 0;i < consumedTexCount;i++)
                 {
-                    //Debug.Log($"{ids[curTexIndex + i]} => ({curAtlasIndex}) {rects[i].xMin} {rects[i].xMax} {rects[i].yMin} {rects[i].yMax}");
+                    //Debug.Log($"{curTexIndex + i} {ids[curTexIndex + i]} => ({curAtlasIndex}) {rects[i].xMin} {rects[i].xMax} {rects[i].yMin} {rects[i].yMax}");
                     var curAnimInfo = textureInfos[curTexIndex + i].Item2;
                     
                     if (curAnimInfo is null)
@@ -825,7 +831,6 @@ namespace CraftSharp.Resource
                 curAtlasIndex++;
 
                 yield return null;
-
             }
             while (curTexIndex < totalCount);
 
