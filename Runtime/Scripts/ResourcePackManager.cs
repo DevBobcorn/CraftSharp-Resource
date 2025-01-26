@@ -67,6 +67,7 @@ namespace CraftSharp.Resource
         public readonly Dictionary<ResourceLocation, Mesh[]> ParticleMeshesTable = new();
 
         public const int ATLAS_SIZE = 1024;
+        public const int MIN_MIPMAP_SIZE = 16;
 
         public bool Loaded { get; private set; } = false;
 
@@ -834,8 +835,13 @@ namespace CraftSharp.Resource
             }
             while (curTexIndex < totalCount);
 
-            var atlasArray0 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32,  0, false);
-            var atlasArray1 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32,  4, false);
+            // mipCount 1 means no mipmapping, mipCount 0 means use maximum level of mipmaps
+            // A mipCount of ((int) math.log2(MIN_MIPMAP_SIZE)) + 1 makes sure that all
+            // MIN_MIPMAP_SIZE * MIN_MIPMAP_SIZE mipmap chunks are sampled from a single tile
+            var mipCount1 = ((int) math.log2(MIN_MIPMAP_SIZE)) + 1;
+            var mipCount0 = Mathf.Max(1, mipCount1 - 2);
+            var atlasArray0 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32, mipCount0, false);
+            var atlasArray1 = new Texture2DArray(ATLAS_SIZE, ATLAS_SIZE, curAtlasIndex, TextureFormat.RGBA32, mipCount1, false);
 
             atlasArray0.filterMode = FilterMode.Point;
             atlasArray1.filterMode = FilterMode.Point;
@@ -845,11 +851,70 @@ namespace CraftSharp.Resource
                 atlasArray0.SetPixels32(atlases[index].GetPixels32(), index, 0);
                 atlasArray1.SetPixels32(atlases[index].GetPixels32(), index, 0);
 
+                var lastColors = atlases[index].GetPixels32();
+                var pixColors = new Color32[4];
+
+                for (int mipLevel = 1, size = ATLAS_SIZE; mipLevel < mipCount1; mipLevel++, size >>= 1)
+                {
+                    int mipSize = size >> 1;
+                    var mipColors = new Color32[mipSize * mipSize];
+
+                    for (int y = 0; y < mipSize; y++)
+                        for (int x = 0; x < mipSize; x++)
+                        {
+                            pixColors[0] = lastColors[ y * 2      * size + x * 2    ];
+                            pixColors[1] = lastColors[ y * 2      * size + x * 2 + 1];
+                            pixColors[2] = lastColors[(y * 2 + 1) * size + x * 2    ];
+                            pixColors[3] = lastColors[(y * 2 + 1) * size + x * 2 + 1];
+
+                            float r = 0, g = 0, b = 0;
+                            int a = 0;
+                            int pixCount = 0;
+
+                            for (int p = 0; p < 4; p++)
+                            {
+                                if (pixColors[p].a > 0) // Discard fully transparent pixels
+                                {
+                                    r += Mathf.GammaToLinearSpace(pixColors[p].r / 255F);
+                                    g += Mathf.GammaToLinearSpace(pixColors[p].g / 255F);
+                                    b += Mathf.GammaToLinearSpace(pixColors[p].b / 255F);
+                                    a += pixColors[p].a; // Alpha is linear
+
+                                    pixCount++;
+                                }
+                            }
+                            if (pixCount > 2 || (pixCount == 2 && (x + y) % 2 == 0))
+                            {
+                                byte blendR = (byte) Mathf.RoundToInt(Mathf.LinearToGammaSpace(r / pixCount) * 255F);
+                                byte blendG = (byte) Mathf.RoundToInt(Mathf.LinearToGammaSpace(g / pixCount) * 255F);
+                                byte blendB = (byte) Mathf.RoundToInt(Mathf.LinearToGammaSpace(b / pixCount) * 255F);
+
+                                mipColors[y * mipSize + x] = new Color32(blendR, blendG, blendB, (byte) (a / pixCount));
+                            }
+                            else // The composited pixel is transparent
+                            {
+                                mipColors[y * mipSize + x] = Color.clear;
+                            }
+                        }
+
+                    if (mipLevel < mipCount0)
+                    {
+                        atlasArray0.SetPixels32(mipColors, index, mipLevel);
+                    }
+                    atlasArray1.SetPixels32(mipColors, index, mipLevel);
+
+                    var tempTex = new Texture2D(mipSize, mipSize);
+                    tempTex.SetPixels32(mipColors);
+                    File.WriteAllBytes($"D:/mip_{mipLevel}.png", tempTex.EncodeToPNG());
+
+                    lastColors = mipColors; // Continue to generate next level of mipmap
+                }
+
                 yield return null;
             }
 
-            atlasArray0.Apply(true, false);
-            atlasArray1.Apply(true, false);
+            atlasArray0.Apply(false, false);
+            atlasArray1.Apply(false, false);
 
             atlasArrays[0] = atlasArray0;
             atlasArrays[1] = atlasArray1;
