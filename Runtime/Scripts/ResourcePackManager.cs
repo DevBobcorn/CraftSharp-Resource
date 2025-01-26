@@ -848,9 +848,11 @@ namespace CraftSharp.Resource
 
             for (int index = 0;index < atlases.Count;index++)
             {
+                // Set texture pixels
                 atlasArray0.SetPixels32(atlases[index].GetPixels32(), index, 0);
                 atlasArray1.SetPixels32(atlases[index].GetPixels32(), index, 0);
 
+                // Generate mipmaps of different levels
                 var lastColors = atlases[index].GetPixels32();
                 var pixColors = new Color32[4];
 
@@ -902,10 +904,6 @@ namespace CraftSharp.Resource
                         atlasArray0.SetPixels32(mipColors, index, mipLevel);
                     }
                     atlasArray1.SetPixels32(mipColors, index, mipLevel);
-
-                    var tempTex = new Texture2D(mipSize, mipSize);
-                    tempTex.SetPixels32(mipColors);
-                    File.WriteAllBytes($"D:/mip_{mipLevel}.png", tempTex.EncodeToPNG());
 
                     lastColors = mipColors; // Continue to generate next level of mipmap
                 }
