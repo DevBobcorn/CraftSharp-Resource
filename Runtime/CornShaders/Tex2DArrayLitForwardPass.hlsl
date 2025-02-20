@@ -222,16 +222,15 @@ void LitPassFragmentSimple(
         //LODFadeCrossFade(input.positionCS);
     #endif
 
-        InputData inputData;
-        InitializeInputData(input, surfaceData.normalTS, inputData);
-        SETUP_DEBUG_TEXTURE_DATA(inputData, input.uv, _BaseMap);
+    InputData inputData;
+    InitializeInputData(input, surfaceData.normalTS, inputData);
+    //SETUP_DEBUG_TEXTURE_DATA(inputData, input.uv, _BaseMap);
 
     #ifdef _DBUFFER
         ApplyDecalToSurfaceData(input.positionCS, surfaceData, inputData);
     #endif
 
     half4 color = UniversalFragmentBlinnPhong(inputData, surfaceData);
-    //half4 color = half4(1, 0, 0, 0);
 
     ApplyFog(color.rgb, inputData.fogCoord, input.positionCS, input.positionWS);
 
