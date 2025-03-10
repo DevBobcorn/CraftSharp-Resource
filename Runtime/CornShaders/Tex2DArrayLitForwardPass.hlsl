@@ -129,7 +129,7 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
     #endif
 
     // Mix with block light
-    inputData.bakedGI = max(pow(input.color.w * 0.1F, 1.5F), inputData.bakedGI);
+    inputData.bakedGI = max(pow(abs(input.color.w * 0.1F), 1.5F), inputData.bakedGI);
 
     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
     inputData.shadowMask = SAMPLE_SHADOWMASK(input.staticLightmapUV);

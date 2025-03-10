@@ -33,7 +33,7 @@ namespace CraftSharp.Resource
         // By default unity uses z-x-y order for euler angles, while
         // we use x-y-z order for our bedrock entity models, so we'll
         // do a bit conversion here
-        public static Quaternion RotationFromEularsXYZ(float3 eularsXYZ)
+        public static Quaternion RotationFromEulersXYZ(float3 eularsXYZ)
         {
             return Quaternion.AngleAxis(eularsXYZ.x, Vector3.right) *
                     Quaternion.AngleAxis(eularsXYZ.y, Vector3.up) *
@@ -44,7 +44,7 @@ namespace CraftSharp.Resource
         public static void RotateVertices(ref float3[] original, float3 pivot, float3 eularsXYZ, float downScale = 1F, int startIndex = 0)
         {
             // Set up rotation quaternion...
-            Quaternion rot = RotationFromEularsXYZ(eularsXYZ);
+            Quaternion rot = RotationFromEulersXYZ(eularsXYZ);
 
             // And rotate vertices...
             for (int i = startIndex;i < original.Length;i++)
