@@ -608,7 +608,7 @@ namespace CraftSharp.Resource
             return tex;
         }
 
-        private Texture2D GetMissingTexture()
+        public Texture2D GetMissingTexture()
         {
             Texture2D tex = new(16, 16);
             Color32 black = Color.black;
