@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace CraftSharp.Resource.BedrockEntity
 {
@@ -45,7 +46,7 @@ namespace CraftSharp.Resource.BedrockEntity
             float length = 0F;
             if (data.Properties.ContainsKey("animation_length"))
             {
-                length = float.Parse(data.Properties["animation_length"].StringValue);
+                length = float.Parse(data.Properties["animation_length"].StringValue, CultureInfo.InvariantCulture.NumberFormat);
             }
 
             Dictionary<string, EntityBoneAnimation> anims = new();

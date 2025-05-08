@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using UnityEngine;
 
@@ -41,14 +42,14 @@ namespace CraftSharp.Resource.BedrockEntity
                     {
                         if (!int.TryParse(itemDesc.Properties["texture_width"].StringValue, out texWidth))
                         {   // Try parsing as float point number, and then round to int
-                            texWidth = Mathf.RoundToInt(float.Parse(itemDesc.Properties["texture_width"].StringValue));
+                            texWidth = Mathf.RoundToInt(float.Parse(itemDesc.Properties["texture_width"].StringValue, CultureInfo.InvariantCulture.NumberFormat));
                         }
                     }
                     if (itemDesc.Properties.ContainsKey("texture_height"))
                     {
                         if (!int.TryParse(itemDesc.Properties["texture_height"].StringValue, out texHeight))
                         {   // Try parsing as float point number, and then round to int
-                            texHeight = Mathf.RoundToInt(float.Parse(itemDesc.Properties["texture_height"].StringValue));
+                            texHeight = Mathf.RoundToInt(float.Parse(itemDesc.Properties["texture_height"].StringValue, CultureInfo.InvariantCulture.NumberFormat));
                         }
                     }
 
@@ -85,14 +86,14 @@ namespace CraftSharp.Resource.BedrockEntity
                     {
                         if (!int.TryParse(item.Properties["texturewidth"].StringValue, out texWidth))
                         {   // Try parsing as float point number, and then round to int
-                            texWidth = Mathf.RoundToInt(float.Parse(item.Properties["texturewidth"].StringValue));
+                            texWidth = Mathf.RoundToInt(float.Parse(item.Properties["texturewidth"].StringValue, CultureInfo.InvariantCulture.NumberFormat));
                         }
                     }
                     if (item.Properties.ContainsKey("textureheight"))
                     {
                         if (!int.TryParse(item.Properties["textureheight"].StringValue, out texHeight))
                         {   // Try parsing as float point number, and then round to int
-                            texHeight = Mathf.RoundToInt(float.Parse(item.Properties["textureheight"].StringValue));
+                            texHeight = Mathf.RoundToInt(float.Parse(item.Properties["textureheight"].StringValue, CultureInfo.InvariantCulture.NumberFormat));
                         }
                     }
 

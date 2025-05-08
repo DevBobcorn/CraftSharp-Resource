@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Unity.Mathematics;
 
@@ -141,7 +142,7 @@ namespace CraftSharp.Resource.BedrockEntity
                     var inflate = 0F;
                     if (cubeData.Properties.ContainsKey("inflate"))
                     {
-                        inflate = float.Parse(cubeData.Properties["inflate"].StringValue);
+                        inflate = float.Parse(cubeData.Properties["inflate"].StringValue, CultureInfo.InvariantCulture.NumberFormat);
                     }
 
                     return new EntityModelCube

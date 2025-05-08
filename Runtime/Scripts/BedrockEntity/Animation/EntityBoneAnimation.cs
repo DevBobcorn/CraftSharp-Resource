@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Unity.Mathematics;
 
@@ -139,7 +140,7 @@ namespace CraftSharp.Resource.BedrockEntity
             {
                 foreach (var pair in data.Properties) // Foreach keyframe
                 {
-                    float time = float.Parse(pair.Key);
+                    float time = float.Parse(pair.Key, CultureInfo.InvariantCulture.NumberFormat);
                     var frameData = pair.Value;
 
                     if (frameData.Type == Json.JSONData.DataType.Array
