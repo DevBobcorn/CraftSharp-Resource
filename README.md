@@ -17,4 +17,4 @@ Most code in this repository is open source under CDDL-1.0, and this license app
 Some other open-source projects/code examples are used in the project, which use their own licenses. Here's a list of them:
 * [Minecraft-Console-Client](https://github.com/MCCTeam/Minecraft-Console-Client) (Json Parser code)
 
-The full CDDL-1.0 license can be reviewed [here](http://opensource.org/licenses/CDDL-1.0).
+The full CDDL-1.0 license can be reviewed [here](./LICENSE.md).
