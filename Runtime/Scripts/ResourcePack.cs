@@ -74,17 +74,7 @@ namespace CraftSharp.Resource
                             foreach (var texFile in texturesDir.GetFiles("*.png", SearchOption.AllDirectories)) // Allow sub folders...
                             {
                                 string texId = texFile.FullName.Replace('\\', '/');
-                                texId = texId[texDirLen..]; // e.g. 'block/grass_block_top.png'
-
-                                if (texId.StartsWith("effect/") || texId.StartsWith("font/") ||
-                                    texId.StartsWith("gui/")    || texId.StartsWith("misc/") ||
-                                    texId.StartsWith("mob_effect/") || texId.StartsWith("painting/"))
-                                {
-                                    // Debug.Log($"Skipping texture {texId}");
-                                    continue;
-                                }
-
-                                texId = texId[..texId.LastIndexOf('.')]; // e.g. 'block/grass_block_top'
+                                texId = texId[texDirLen..texId.LastIndexOf('.')]; // e.g. 'block/grass_block_top'
                                 var identifier = new ResourceLocation(nameSpace, texId);
 
                                 // Add or update this entry
