@@ -19,6 +19,14 @@ namespace CraftSharp.Resource
         public static readonly ResourceLocation FOLIAGE_COLORMAP = new("colormap/foliage");
         public static readonly ResourceLocation GRASS_COLORMAP = new("colormap/grass");
 
+        public static readonly ResourceLocation[] DESTROY_TEXTURES = new ResourceLocation[]
+        {
+            new("block/destroy_stage_0"), new("block/destroy_stage_1"), new("block/destroy_stage_2"),
+            new("block/destroy_stage_3"), new("block/destroy_stage_4"), new("block/destroy_stage_5"),
+            new("block/destroy_stage_6"), new("block/destroy_stage_7"), new("block/destroy_stage_8"),
+            new("block/destroy_stage_9")
+        };
+
         // Identifier -> Texture file path (For atlas)
         public readonly Dictionary<ResourceLocation, string> TextureFileTable = new();
         // Identifier -> Entity texture
@@ -75,6 +83,8 @@ namespace CraftSharp.Resource
         // atlasArrays[0]: Not mipped
         // atlasArrays[1]: Mipped
         private readonly Texture2DArray[] atlasArrays = new Texture2DArray[2];
+
+        private Texture2DArray? destroyTextureArray;
 
         private readonly List<ResourcePack> packs = new();
 
@@ -498,6 +508,11 @@ namespace CraftSharp.Resource
             return mipped ? atlasArrays[1]! : atlasArrays[0]!;
         }
 
+        public Texture2DArray? GetDestroyTextureArray()
+        {
+            return destroyTextureArray;
+        }
+
         private record TextureAnimationInfo
         {
             public int framePerRow;
@@ -513,7 +528,7 @@ namespace CraftSharp.Resource
             }
         }
 
-        private (Texture2D, TextureAnimationInfo?) LoadSingleTexture(ResourceLocation texId, string texFilePath)
+        private (Texture2D, TextureAnimationInfo?) LoadSingleTexture(string texFilePath)
         {
             Texture2D tex = new(2, 2);
             tex.LoadImage(File.ReadAllBytes(texFilePath));
@@ -742,7 +757,7 @@ namespace CraftSharp.Resource
             {
                 var texFilePath = texDict[textureId];
                 ids[count] = textureId;
-                textureInfos[count++] = LoadSingleTexture(textureId, texFilePath);
+                textureInfos[count++] = LoadSingleTexture(texFilePath);
 
                 if (count % 5 == 0) yield return null;
             }
@@ -943,6 +958,42 @@ namespace CraftSharp.Resource
                     Debug.LogWarning($"Colormap size inconsistency: expected {World.ColormapSize}, got {mapTex.height}");
 
                 World.GrassColormapPixels = mapTex.GetPixels32();
+            }
+
+            if (texDict.TryGetValue(DESTROY_TEXTURES[0], out var texPath))
+            {
+                var texture = new Texture2D(2, 2);
+                texture.LoadImage(File.ReadAllBytes(texPath));
+
+                // mipCount 0 means maximum mip level, mipCount 1 means no mipmap
+                var textureArray = new Texture2DArray(texture.width, texture.height,
+                    DESTROY_TEXTURES.Length, TextureFormat.RGBA32, 1, false)
+                {
+                    filterMode = FilterMode.Point
+                };
+                textureArray.SetPixels32(texture.GetPixels32(), 0, 0);
+
+                for (int i = 1; i < DESTROY_TEXTURES.Length; i++)
+                {
+                    if (texDict.TryGetValue(DESTROY_TEXTURES[i], out texPath))
+                    {
+                        texture.LoadImage(File.ReadAllBytes(texPath));
+                        textureArray.SetPixels32(texture.GetPixels32(), i, 0);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Destroy texture {i} is not present!");
+                        break;
+                    }
+                }
+
+                textureArray.Apply(false, false);
+                
+                destroyTextureArray = textureArray;
+            }
+            else
+            {
+                Debug.LogWarning("Destroy texture 0 is not present!");
             }
 
             atlasGenFlag.Finished = true;

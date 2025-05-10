@@ -44,6 +44,9 @@ namespace CraftSharp.Resource
             return vertexCount;
         }
 
+        /// <summary>
+        /// faceLights should contain 7 light values (for each face of the cube space, plus value for cube center)
+        /// </summary>
         public static float GetVertexLightFromFaceLights(CullDir dir, float[] faceLights)
         {
             // Simplified sampling: Accepts light values of neighbors and self, sample by face direction
@@ -62,7 +65,7 @@ namespace CraftSharp.Resource
         }
 
         /// <summary>
-        /// Light value range: [0, 15]
+        /// cornerLights should contain 8 light values (for each corner of the cube space)
         /// </summary>
         public static float GetVertexLightFromCornerLights(float3 vertPosInBlock, float[] cornerLights)
         {
@@ -99,7 +102,6 @@ namespace CraftSharp.Resource
         }
 
         private static readonly float[] NO_AO = new float[] { 1F, 1F, 1F, 1F };
-        private static readonly float[] FULL_THICKNESS = new float[] { 1F, 1F, 1F, 1F };
 
         /// <summary>
         /// Get 4 corner AO values for a face
@@ -278,17 +280,33 @@ namespace CraftSharp.Resource
             return new float3(Mathf.GammaToLinearSpace(rgb.x), Mathf.GammaToLinearSpace(rgb.y), Mathf.GammaToLinearSpace(rgb.z));
         }
 
-        public enum ExtraVertexData
+        private static float2 GetBreakUV(CullDir dir, float3 vertPosInBlock)
         {
-            Light,
-            Light_BlockNormal,    // Used for foliage
-            Light_CrossNormal     // Used for plants
+            return dir switch
+            {
+                CullDir.DOWN   => vertPosInBlock.zx,
+                CullDir.UP     => vertPosInBlock.xz,
+                CullDir.SOUTH  => vertPosInBlock.zy,
+                CullDir.NORTH  => vertPosInBlock.yz,
+                CullDir.EAST   => vertPosInBlock.yx,
+                CullDir.WEST   => vertPosInBlock.xy,
+
+                _              => float2.zero
+            };
+        }
+
+        public enum VertexDataFormat
+        {
+            Color_Light,
+            Color_Light_BlockNormal,    // Used for foliage
+            Color_Light_CrossNormal,    // Used for plants
+            ExtraUV_Light,              // Used for break mesh
         }
 
         /// <summary>
         /// Build block vertices into the given vertex buffer. Returns vertex offset after building.
         /// </summary>
-        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
+        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, VertexDataFormat datFormat = VertexDataFormat.Color_Light)
         {
             var verts = buffer.vert;
             var txuvs = buffer.txuv;
@@ -307,24 +325,33 @@ namespace CraftSharp.Resource
                 {
                     // Divide vertex index by 4 to get quad index
                     var faceDir = noCullingVertexDirArr[i >> 2];
+                    var vertPosInBlock = vertexArrs[CullDir.NONE][i];
 
-                    verts[i + vertOffset] = vertexArrs[CullDir.NONE][i] + posOffset;
-                    float vertLight = GetVertexLightFromCornerLights(vertexArrs[CullDir.NONE][i], blockLights);
-                    float3 vertColor = RGB2Linear(tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR)
-                            * (aoIntensity > 0F ? SampleVertexAO(faceDir, dir2ao[faceDir], vertexArrs[CullDir.NONE][i], vertLight) : 1F);
+                    verts[i + vertOffset] = vertPosInBlock + posOffset;
+                    float vertLight = GetVertexLightFromCornerLights(vertPosInBlock, blockLights);
+                    
                     switch (datFormat)
                     {
-                        case ExtraVertexData.Light_BlockNormal:
-                            int vertNormal1 = GetVertexNormalIndex_Block(vertexArrs[CullDir.NONE][i], castAOMask);
+                        case VertexDataFormat.Color_Light_BlockNormal:
+                            float3 vertColor1 = RGB2Linear(tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR)
+                                * (aoIntensity > 0F ? SampleVertexAO(faceDir, dir2ao[faceDir], vertPosInBlock, vertLight) : 1F);
+                            int vertNormal1 = GetVertexNormalIndex_Block(vertPosInBlock, castAOMask);
                             float packedVal1 = PackExtraVertData(vertLight, vertNormal1);
-                            tints[i + vertOffset] = new float4(vertColor, packedVal1);
+                            tints[i + vertOffset] = new float4(vertColor1, packedVal1);
                             break;
-                        case ExtraVertexData.Light_CrossNormal:
+                        case VertexDataFormat.Color_Light_CrossNormal:
+                            float3 vertColor2 = RGB2Linear(tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR)
+                                * (aoIntensity > 0F ? SampleVertexAO(faceDir, dir2ao[faceDir], vertPosInBlock, vertLight) : 1F);
                             float packedVal2 = PackExtraVertData(vertLight, 0x3F);
-                            tints[i + vertOffset] = new float4(vertColor, packedVal2);
+                            tints[i + vertOffset] = new float4(vertColor2, packedVal2);
                             break;
-                        case ExtraVertexData.Light:
-                            tints[i + vertOffset] = new float4(vertColor, vertLight);
+                        case VertexDataFormat.Color_Light:
+                            float3 vertColor3 = RGB2Linear(tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR)
+                                * (aoIntensity > 0F ? SampleVertexAO(faceDir, dir2ao[faceDir], vertPosInBlock, vertLight) : 1F);
+                            tints[i + vertOffset] = new float4(vertColor3, vertLight);
+                            break;
+                        case VertexDataFormat.ExtraUV_Light:
+                            tints[i + vertOffset] = new float4(GetBreakUV(faceDir, vertPosInBlock), 0F, vertLight);
                             break;
                     }
                 }
@@ -335,43 +362,53 @@ namespace CraftSharp.Resource
 
             for (int dirIdx = 0;dirIdx < 6;dirIdx++)
             {
-                var dir = (CullDir) (dirIdx + 1);
+                var faceDir = (CullDir) (dirIdx + 1);
 
-                if ((cullFlags & (1 << dirIdx)) != 0 && vertexArrs[dir].Length > 0)
+                if ((cullFlags & (1 << dirIdx)) != 0 && vertexArrs[faceDir].Length > 0)
                 {
-                    var cornersAO = GetDirCornersAO(dir, castAOMask, aoIntensity);
+                    var cornersAO = GetDirCornersAO(faceDir, castAOMask, aoIntensity);
 
-                    for (i = 0U;i < vertexArrs[dir].Length;i++)
+                    for (i = 0U;i < vertexArrs[faceDir].Length;i++)
                     {
-                        verts[i + vertOffset] = vertexArrs[dir][i] + posOffset;
-                        float vertLight = GetVertexLightFromCornerLights(vertexArrs[dir][i], blockLights);
-                        float3 vertColor = RGB2Linear(tintIndexArrs[dir][i] >= 0 ? blockColor : DEFAULT_COLOR)
-                                * (aoIntensity > 0F ? SampleVertexAO(dir, cornersAO, vertexArrs[dir][i], vertLight) : 1F);
+                        var vertPosInBlock = vertexArrs[faceDir][i];
+
+                        verts[i + vertOffset] = vertPosInBlock + posOffset;
+                        float vertLight = GetVertexLightFromCornerLights(vertPosInBlock, blockLights);
+                        
                         switch (datFormat)
                         {
-                            case ExtraVertexData.Light_BlockNormal:
-                                int vertNormal1 = GetVertexNormalIndex_Block(vertexArrs[dir][i], castAOMask);
+                            case VertexDataFormat.Color_Light_BlockNormal:
+                                float3 vertColor1 = RGB2Linear(tintIndexArrs[faceDir][i] >= 0 ? blockColor : DEFAULT_COLOR)
+                                    * (aoIntensity > 0F ? SampleVertexAO(faceDir, cornersAO, vertPosInBlock, vertLight) : 1F);
+                                int vertNormal1 = GetVertexNormalIndex_Block(vertPosInBlock, castAOMask);
                                 float packedVal1 = PackExtraVertData(vertLight, vertNormal1);
-                                tints[i + vertOffset] = new float4(vertColor, packedVal1);
+                                tints[i + vertOffset] = new float4(vertColor1, packedVal1);
                                 break;
-                            case ExtraVertexData.Light_CrossNormal:
+                            case VertexDataFormat.Color_Light_CrossNormal:
+                                float3 vertColor2 = RGB2Linear(tintIndexArrs[faceDir][i] >= 0 ? blockColor : DEFAULT_COLOR)
+                                    * (aoIntensity > 0F ? SampleVertexAO(faceDir, cornersAO, vertPosInBlock, vertLight) : 1F);
                                 float packedVal2 = PackExtraVertData(vertLight, 0x3F);
-                                tints[i + vertOffset] = new float4(vertColor, packedVal2);
+                                tints[i + vertOffset] = new float4(vertColor2, packedVal2);
                                 break;
-                            case ExtraVertexData.Light:
-                                tints[i + vertOffset] = new float4(vertColor, vertLight);
+                            case VertexDataFormat.Color_Light:
+                                float3 vertColor3 = RGB2Linear(tintIndexArrs[faceDir][i] >= 0 ? blockColor : DEFAULT_COLOR)
+                                    * (aoIntensity > 0F ? SampleVertexAO(faceDir, cornersAO, vertPosInBlock, vertLight) : 1F);
+                                tints[i + vertOffset] = new float4(vertColor3, vertLight);
+                                break;
+                            case VertexDataFormat.ExtraUV_Light:
+                                tints[i + vertOffset] = new float4(GetBreakUV(faceDir, vertPosInBlock), 0F, vertLight);
                                 break;
                         }
                     }
-                    uvArrs[dir].CopyTo(txuvs, vertOffset);
-                    uvAnimArrs[dir].CopyTo(uvans, vertOffset);
-                    vertOffset += (uint) vertexArrs[dir].Length;
+                    uvArrs[faceDir].CopyTo(txuvs, vertOffset);
+                    uvAnimArrs[faceDir].CopyTo(uvans, vertOffset);
+                    vertOffset += (uint) vertexArrs[faceDir].Length;
                 }
             }
         }
 
         public void BuildWithCollider(VertexBuffer buffer, ref uint vertOffset, float3[] cVerts, ref uint cVertOffset, float3 posOffset,
-                int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, ExtraVertexData datFormat = ExtraVertexData.Light)
+                int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, VertexDataFormat datFormat = VertexDataFormat.Color_Light)
         {
             var startOffset = vertOffset;
 

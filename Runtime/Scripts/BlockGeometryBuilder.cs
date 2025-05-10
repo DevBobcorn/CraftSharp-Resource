@@ -19,7 +19,7 @@ namespace CraftSharp.Resource
 
         /// <summary>
         /// Cull directions for vertices on faces not being culled on any direction(CullDir.NONE), used
-        /// as a reference for some cull direction based calculations. It's length should be a 1/4 of
+        /// as a reference for some cull direction based calculations. Its length should be a 1/4 of
         /// verticies[CullDir.NONE].Length, because 4 vertices on the same quad share a same direction.
         /// </summary>
         public readonly List<CullDir> noCullingVertexDirections     = new();

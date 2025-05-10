@@ -20,7 +20,7 @@ namespace CraftSharp.Resource
         public float4[] uvan = { };
 
         /// <summary>
-        /// Extra vertex data array (tint r, tint g, tint b, (block light) + )
+        /// Extra vertex data array (tint r, tint g, tint b, block light) or (destroy u, destroy v, _, block light)
         /// </summary>
         public float4[] tint = { };
 
