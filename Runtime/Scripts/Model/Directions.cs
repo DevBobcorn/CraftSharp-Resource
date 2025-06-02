@@ -2,7 +2,7 @@ namespace CraftSharp.Resource
 {
     public enum FaceDir
     {
-        UP, DOWN, NORTH, SOUTH, WEST, EAST
+        UP, DOWN, SOUTH, NORTH, EAST, WEST
     }
 
     public enum CullDir
