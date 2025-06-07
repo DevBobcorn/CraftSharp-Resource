@@ -21,7 +21,7 @@ namespace CraftSharp.Resource
         /// <summary>
         /// Download vanilla resource files, including default translation file 'en_us.json'.
         /// </summary>
-        public static IEnumerator DownloadResource(string resVersion, Action<string> updateStatus, Action start, Action<bool> complete)
+        public static IEnumerator DownloadResource(string resVersion, Action<string, string> updateStatus, Action start, Action<bool> complete)
         {
             Debug.Log($"Downloading resource [{resVersion}]");
 
@@ -31,25 +31,31 @@ namespace CraftSharp.Resource
 
             bool succeeded = false;
 
-            Task<string>? downloadTask = null;
             var webClient = new WebClient();
+            var currentStage = string.Empty;
+
+            webClient.DownloadProgressChanged += (_, args) =>
+            {
+                updateStatus(currentStage, $" {args.ProgressPercentage}%");
+            };
 
             // Download version manifest
-            downloadTask = webClient.DownloadStringTaskAsync(VERSION_MANIFEST_URL);
-            updateStatus("resource.info.download_manifest");
+            Task<string>? downloadTask = webClient.DownloadStringTaskAsync(VERSION_MANIFEST_URL);
+            currentStage = "resource.info.download_manifest";
             while (!downloadTask.IsCompleted) yield return null;
 
             if (downloadTask.IsCompletedSuccessfully) // Proceed to resource downloading
             {
                 var manifestJson = Json.ParseJson(downloadTask.Result);
-                var versionTargets = manifestJson.Properties["versions"].DataArray.Where(x =>
-                        x.Properties["id"].StringValue.Equals(resVersion));
+                var versionTargets = manifestJson.Properties["versions"].DataArray
+                    .Where(x => x.Properties["id"].StringValue.Equals(resVersion));
 
-                if (versionTargets.Count() > 0)
+                var jsonDataArray = versionTargets as Json.JSONData[] ?? versionTargets.ToArray();
+                if (jsonDataArray.Length > 0)
                 {
-                    var versionInfoUri = versionTargets.First().Properties["url"].StringValue;
+                    var versionInfoUri = jsonDataArray.First().Properties["url"].StringValue;
                     downloadTask = webClient.DownloadStringTaskAsync(versionInfoUri);
-                    updateStatus("resource.info.get_version_info");
+                    currentStage = "resource.info.get_version_info";
                     while (!downloadTask.IsCompleted) yield return null;
 
                     if (downloadTask.IsCompletedSuccessfully)
@@ -60,17 +66,19 @@ namespace CraftSharp.Resource
                         var jarUri = clientJarInfo.Properties["url"].StringValue;
                         // Download jar file
                         var jarDownloadTask = webClient.DownloadDataTaskAsync(jarUri);
-                        updateStatus("resource.info.download_jar");
+                        currentStage = "resource.info.download_jar";
                         while (!jarDownloadTask.IsCompleted) yield return null;
                         if (jarDownloadTask.IsCompletedSuccessfully) // Jar downloaded, unzip it
                         {
-                            try
+                            var targetFolder = PathHelper.GetPackDirectoryNamed($"vanilla-{resVersion}");
+                            var zipStream = new MemoryStream(jarDownloadTask.Result);
+                            
+                            updateStatus("resource.info.extract_asset", string.Empty);
+
+                            Task.Run(() =>
                             {
-                                var targetFolder = PathHelper.GetPackDirectoryNamed($"vanilla-{resVersion}");
-                                var zipStream = new MemoryStream(jarDownloadTask.Result);
                                 using (var zipFile = new ZipArchive(zipStream, ZipArchiveMode.Read))
                                 {
-                                    updateStatus("resource.info.extract_asset");
                                     // Extract asset files
                                     foreach (var entry in zipFile.Entries.Where(x => x.FullName.StartsWith("assets")))
                                     {
@@ -81,7 +89,7 @@ namespace CraftSharp.Resource
                                         }
                                         entry.ExtractToFile(entryPath.FullName);
                                     }
-                                    
+                                
                                     if (zipFile.GetEntry("pack.mcmeta") is not null) // Extract pack.mcmeta
                                     {
                                         zipFile.GetEntry("pack.mcmeta").ExtractToFile($"{targetFolder}{SP}pack.mcmeta");
@@ -94,13 +102,11 @@ namespace CraftSharp.Resource
 
                                     Debug.Log("Resources successfully downloaded and extracted.");
                                 }
-
+                                
                                 succeeded = true;
-                            }
-                            catch (Exception e)
-                            {
-                                Debug.LogWarning($"Exception occurred when extracting jar file: {e}");
-                            }
+                            });
+                            
+                            while (!succeeded) yield return null;
                         }
                         else
                             Debug.LogWarning($"Failed to download client jar: {jarDownloadTask.Exception}");
@@ -128,7 +134,7 @@ namespace CraftSharp.Resource
         /// Do note that 'en_us.json' cannot be retrieved this way since it is not present in the
         /// asset list.
         /// </summary>
-        public static IEnumerator DownloadLanguageJson(string resVersion, string langCode, Action<string> updateStatus, Action start, Action<bool> complete)
+        public static IEnumerator DownloadLanguageJson(string resVersion, string langCode, Action<string, string> updateStatus, Action start, Action<bool> complete)
         {
             Debug.Log($"Downloading resource [{resVersion}]");
 
@@ -138,12 +144,17 @@ namespace CraftSharp.Resource
 
             bool succeeded = false;
 
-            Task<string>? downloadTask = null;
             var webClient = new WebClient();
+            var currentStage = string.Empty;
+            
+            webClient.DownloadProgressChanged += (_, args) =>
+            {
+                updateStatus(currentStage, $" {args.ProgressPercentage}%");
+            };
 
             // Download version manifest
-            downloadTask = webClient.DownloadStringTaskAsync("https://launchermeta.mojang.com/mc/game/version_manifest.json");
-            updateStatus("resource.info.download_manifest");
+            Task<string>? downloadTask = webClient.DownloadStringTaskAsync("https://launchermeta.mojang.com/mc/game/version_manifest.json");
+            currentStage = "resource.info.download_manifest";
             while (!downloadTask.IsCompleted) yield return null;
 
             if (downloadTask.IsCompletedSuccessfully) // Proceed to resource downloading
@@ -152,11 +163,12 @@ namespace CraftSharp.Resource
                 var versionTargets = manifestJson.Properties["versions"].DataArray.Where(x =>
                         x.Properties["id"].StringValue.Equals(resVersion));
 
-                if (versionTargets.Count() > 0)
+                var jsonDataArray = versionTargets as Json.JSONData[] ?? versionTargets.ToArray();
+                if (jsonDataArray.Length > 0)
                 {
-                    var versionInfoUri = versionTargets.First().Properties["url"].StringValue;
+                    var versionInfoUri = jsonDataArray.First().Properties["url"].StringValue;
                     downloadTask = webClient.DownloadStringTaskAsync(versionInfoUri);
-                    updateStatus("resource.info.get_version_info");
+                    currentStage = "resource.info.get_version_info";
                     while (!downloadTask.IsCompleted) yield return null;
 
                     if (downloadTask.IsCompletedSuccessfully)
@@ -165,20 +177,20 @@ namespace CraftSharp.Resource
                         var assetIndexUri = infoJson.Properties["assetIndex"].Properties["url"].StringValue;
                         
                         downloadTask = webClient.DownloadStringTaskAsync(assetIndexUri);
-                        updateStatus("resource.info.get_asset_index");
+                        currentStage = "resource.info.get_asset_index";
                         while (!downloadTask.IsCompleted) yield return null;
 
                         if (downloadTask.IsCompletedSuccessfully)
                         {
                             Match match = Regex.Match(downloadTask.Result, $"minecraft/lang/{langCode}.json" + @""":\s\{""hash"":\s""([\d\w]{40})""");
                             
-                            if (match.Success && match.Groups.Count == 2)
+                            if (match is { Success: true, Groups: { Count: 2 } })
                             {
                                 string hash = match.Groups[1].Value;
                                 var langJsonUrl = $"{RESOURCE_DOWNLOAD_URL}/{hash[..2]}/{hash}";
                                 
                                 downloadTask = webClient.DownloadStringTaskAsync(langJsonUrl);
-                                updateStatus("resource.info.download_lang_text");
+                                currentStage = "resource.info.download_lang_text";
                                 while (!downloadTask.IsCompleted) yield return null;
 
                                 if (downloadTask.IsCompletedSuccessfully)
