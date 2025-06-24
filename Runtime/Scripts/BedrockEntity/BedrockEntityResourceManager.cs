@@ -8,92 +8,6 @@ using System.Linq;
 
 namespace CraftSharp.Resource.BedrockEntity
 {
-    public struct BedrockVersion : IComparable
-    {
-        public int a;
-        public int b;
-        public int c;
-
-        public BedrockVersion(int va, int vb, int vc)
-        {
-            a = va;
-            b = vb;
-            c = vc;
-        }
-
-        public readonly int CompareTo(object obj)
-        {
-            if (obj is BedrockVersion ver)
-            {
-                if (a == ver.a)
-                {
-                    if (b == ver.b)
-                    {
-                        if (c == ver.c)
-                        {
-                            return 0;
-                        }
-                        else
-                        {
-                            return c > ver.c ? 1 : -1;
-                        }
-                    }
-                    else
-                    {
-                        return b > ver.b ? 1 : -1;
-                    }
-                }
-                else
-                {
-                    return a > ver.a ? 1 : -1;
-                }
-            }
-            else
-            {
-                throw new InvalidDataException("Trying to compare a bedrock object to unknown object!");
-            }
-        }
-    
-        public static BedrockVersion FromString(string version)
-        {
-            var nums = version.Split(".");
-            if (nums.Length == 3)
-            {
-                return new(int.Parse(nums[0]), int.Parse(nums[1]), int.Parse(nums[2]));
-            }
-            else
-            {
-                throw new InvalidDataException($"Malformed version string: {version}");
-            }
-        }
-
-        public static bool operator >(BedrockVersion n1, BedrockVersion n2) => n1.CompareTo(n2) > 0;
-        public static bool operator >=(BedrockVersion n1, BedrockVersion n2) => n1.CompareTo(n2) >= 0;
-        public static bool operator <(BedrockVersion n1, BedrockVersion n2) => n1.CompareTo(n2) < 0;
-        public static bool operator <=(BedrockVersion n1, BedrockVersion n2) => n1.CompareTo(n2) <= 0;
-
-        public override readonly bool Equals(object obj)
-        {
-            if (obj is not BedrockVersion) return false;
-            return Equals((BedrockVersion) obj);
-        }
-
-        public readonly bool Equals(BedrockVersion other)
-        {
-            return other.a == a && other.b == b && other.c == c;
-        }
-
-        public override readonly int GetHashCode()
-        {
-            return a.GetHashCode() ^ b.GetHashCode() ^ c.GetHashCode();
-        }
-
-        public override readonly string ToString()
-        {
-            return $"[ {a}, {b}, {c} ]";
-        }
-    }
-
     public class BedrockEntityResourceManager
     {
         public static readonly BedrockVersion UNSPECIFIED_VERSION = new(-1, 0, 0);
@@ -104,84 +18,78 @@ namespace CraftSharp.Resource.BedrockEntity
         public readonly Dictionary<string, EntityAnimation> EntityAnimations = new();
 
         public readonly Dictionary<string, EntityRenderType> MaterialRenderTypes = new();
-
-        public readonly string[] EntityMaterialNames = { };
+        private readonly Dictionary<string, Texture2D> CachedTextures = new();
+        
+        // Texture name -> Texture file path (For atlas)
+        private readonly Dictionary<string, string> TextureFileTable = new();
         
         private readonly string resourcePath;
         private readonly string playerModelsPath;
+        private readonly string blockEntityModelsPath;
+        
+        public static readonly BedrockEntityResourceManager Instance = new();
 
-        public BedrockEntityResourceManager(string resPath, string playerPath)
+        private BedrockEntityResourceManager()
         {
-            resourcePath = resPath;
-            playerModelsPath = playerPath;
+            resourcePath = PathHelper.GetPackDirectoryNamed("bedrock_res");
+            playerModelsPath = PathHelper.GetPackDirectoryNamed("player_models");
+            blockEntityModelsPath = PathHelper.GetPackDirectoryNamed("block_entity_models");
         }
 
-        private bool ReplaceCheck(BedrockVersion prevVer, BedrockVersion newVer)
+        private static string GetFullTexturePath(string pathWithoutExtension)
+        {
+            // Image could be either tga or png
+            if (File.Exists($"{pathWithoutExtension}.png"))
+            {
+                return $"{pathWithoutExtension}.png";
+            }
+            return File.Exists($"{pathWithoutExtension}.tga") ? $"{pathWithoutExtension}.tga" : pathWithoutExtension;
+        }
+        
+        private static bool CheckShouldReplaceEntry(BedrockVersion prevVer, BedrockVersion newVer)
         {
             if (newVer.Equals(UNSPECIFIED_VERSION))
             {
                 return false;
             }
-            else
+
+            if (prevVer.Equals(UNSPECIFIED_VERSION))
             {
-                if (prevVer.Equals(UNSPECIFIED_VERSION))
-                {
-                    return true;
-                }
-                else // Both are specified
-                {
-                    // Return false if they're the same
-                    return newVer > prevVer;
-                }
+                return true;
             }
+
+            // Both are specified, return false if they're the same
+            return newVer > prevVer;
         }
 
-        public IEnumerator LoadEntityResources(DataLoadFlag flag, Action<string> updateStatus)
+        private void LoadExtraEntityModelFolder(string baseResourcePath, string extraModelsPath, string geometryNamePrefix)
         {
-            // Clean up
-            EntityRenderDefinitions.Clear();
-            EntityGeometries.Clear();
-            EntityAnimations.Clear();
-            MaterialRenderTypes.Clear();
-
-            // Load animations
-            var animFolderDir = new DirectoryInfo($"{resourcePath}{SP}animations");
-            foreach (var animFile in animFolderDir.GetFiles("*.json", SearchOption.AllDirectories)) // Allow sub folders...
+            var extraModelFolderDir = new DirectoryInfo(extraModelsPath);
+            if (!extraModelFolderDir.Exists)
             {
-                var data = Json.ParseJson(File.ReadAllText(animFile.FullName)).Properties["animations"];
-
-                foreach (var pair in data.Properties)
-                {
-                    var animName = pair.Key;
-                    var anim = EntityAnimation.FromJson(pair.Value);
-
-                    EntityAnimations.Add(animName, anim);
-                }
+                Debug.Log($"BE extra entity model folder {extraModelsPath} does not exist, skipping.");
+                return;
             }
-
-            var playerModelFolderDir = new DirectoryInfo(playerModelsPath);
-            foreach (var modelFolder in playerModelFolderDir.GetDirectories())
+            
+            foreach (var extraModelFolder in extraModelFolderDir.GetDirectories())
             {
-                var playerFolderRoot = new DirectoryInfo(modelFolder.FullName);
+                var modelFolderRoot = new DirectoryInfo(extraModelFolder.FullName);
 
-                var geoFile = $"{playerFolderRoot}{SP}main.json";
+                var geoFile = $"{modelFolderRoot}{SP}main.json";
+                
                 if (File.Exists(geoFile)) // This model is valid
                 {
                     //Debug.Log($"Loading bedrock player model from {geoFile}");
                     var data = Json.ParseJson(File.ReadAllText(geoFile));
-
                     var geoName = string.Empty;
 
                     try
                     {
                         var geometries = EntityGeometry.TableFromJson(data);
-                        
                         if (geometries.Count > 1) // Only one geometry is expected
-                        {
                             Debug.LogWarning($"More than 1 geometries is found in file {geoFile}");
-                        }
 
-                        geoName = $"geometry.player_{modelFolder.Name}";
+                        geoName = $"geometry.{geometryNamePrefix}_{extraModelFolder.Name}";
                         var geometry = geometries.First().Value;
 
                         EntityGeometries.Add(geoName, geometry);
@@ -191,17 +99,144 @@ namespace CraftSharp.Resource.BedrockEntity
                         Debug.LogWarning($"An error occurred when parsing {geoFile}: {e}");
                     }
                     
-                    var dummyEntityIdentifier = new ResourceLocation("custom_player", modelFolder.Name);
+                    Dictionary<string, string> texturePaths;
+                    
+                    var dummyEntityIdentifier = new ResourceLocation(extraModelFolder.Name);
+                    var defaultTexturePath = $"{modelFolderRoot}{SP}{extraModelFolder.Name}"; // extra_models/foo/foo.png
+                    
+                    var baseResourceTextureDir = new DirectoryInfo( // bedrock_res/textures/foo/bar.png
+                        $"{baseResourcePath}{SP}textures{SP}entity{SP}{extraModelFolder.Name}");
 
+                    if (baseResourceTextureDir.Exists)
+                    {
+                        var textureList = baseResourceTextureDir.GetFiles("*.png", SearchOption.TopDirectoryOnly)
+                            .Union(baseResourceTextureDir.GetFiles("*.tga", SearchOption.TopDirectoryOnly));
+                        
+                        texturePaths = textureList.ToDictionary(x => $"{extraModelFolder.Name}/{x.Name[..^4]}", x => x.FullName);
+                    }
+                    else
+                    {
+                        texturePaths = new() { [ $"{extraModelFolder.Name}/default" ] = defaultTexturePath };
+                    }
+
+                    foreach (var (textureName, texturePath) in texturePaths)
+                    {
+                        TextureFileTable[textureName] = texturePath;
+                    }
+                    
                     EntityRenderDefinitions.Add(dummyEntityIdentifier, new EntityRenderDefinition(
-                            UNSPECIFIED_VERSION, UNSPECIFIED_VERSION, dummyEntityIdentifier,
-                            new Dictionary<string, string> { [ "default" ] = $"{playerFolderRoot}{SP}{modelFolder.Name}" },
-                            new Dictionary<string, string> { [ "default" ] = "ysm_custom_player" },
+                            UNSPECIFIED_VERSION, UNSPECIFIED_VERSION, dummyEntityIdentifier, texturePaths,
+                            new Dictionary<string, string> { [ "default" ] = extraModelFolder.Name },
                             new Dictionary<string, string> { [ "default" ] = geoName },
-                            new Dictionary<string, string> { }
+                            new Dictionary<string, string>()
                     ));
                 }
             }
+        }
+
+        public Texture2D LoadBedrockEntityTexture(int geometryTextureWidth, int geometryTextureHeight, string textureName)
+        {
+            if (CachedTextures.TryGetValue(textureName, out var texture))
+            {
+                return texture;
+            }
+            
+            if (!TextureFileTable.TryGetValue(textureName, out var texturePathWithoutExtension)) // Texture path not registered
+            {
+                CachedTextures[textureName] = ResourcePackManager.GetMissingEntityTexture(
+                    geometryTextureWidth <= 0 ? 32 : geometryTextureWidth, geometryTextureHeight <= 0 ? 32 : geometryTextureHeight);
+                
+                return CachedTextures[textureName];
+            }
+
+            var fileName = GetFullTexturePath(texturePathWithoutExtension);
+            // Load texture from file
+            var imageBytes = File.ReadAllBytes(fileName);
+            if (fileName.EndsWith(".tga")) // Read as tga image
+            {
+                texture = TGALoader.TextureFromTGA(imageBytes);
+            }
+            else // Read as png image
+            {
+                texture = new Texture2D(2, 2);
+                texture.LoadImage(imageBytes);
+            }
+
+            texture.filterMode = FilterMode.Point;
+            //Debug.Log($"Loaded texture from {fileName} ({texture.width}x{texture.height})");
+
+            if (geometryTextureWidth != texture.width || geometryTextureHeight != texture.height)
+            {
+                if (geometryTextureWidth != 0 && geometryTextureHeight != 0) // The sizes doesn't match, use specified texture size
+                {
+                    Debug.LogWarning($"Specified texture size({geometryTextureWidth}x{geometryTextureHeight}) doesn't match image file {texturePathWithoutExtension} ({texture.width}x{texture.height})! Resizing...");
+
+                    var textureWithRightSize = new Texture2D(geometryTextureWidth, geometryTextureHeight)
+                    {
+                        filterMode = FilterMode.Point
+                    };
+
+                    var fillColor = Color.clear;
+                    Color[] pixels = new Color[geometryTextureHeight * geometryTextureWidth];
+                    for (int i = 0; i < pixels.Length; i++)
+                        pixels[i] = fillColor;
+                    
+                    textureWithRightSize.SetPixels(pixels);
+
+                    var blitHeight = Mathf.Min(texture.height, geometryTextureHeight);
+                    var blitOffset = geometryTextureHeight > texture.height ? geometryTextureHeight - texture.height : 0;
+
+                    for (int y = 0; y < blitHeight; y++)
+                        for (int x = 0; x < Mathf.Min(texture.width, geometryTextureWidth); x++)
+                        {
+                            textureWithRightSize.SetPixel(x, y + blitOffset, texture.GetPixel(x, y));
+                        }
+                    
+                    textureWithRightSize.Apply();
+
+                    texture = textureWithRightSize;
+                }
+            }
+            
+            CachedTextures[textureName] =  texture;
+
+            return texture;
+        }
+
+        private void RegisterEntityTextures(EntityRenderDefinition definition)
+        {
+            foreach (var (textureName, texturePath) in definition.TexturePaths)
+            {
+                TextureFileTable[textureName] = texturePath;
+            }
+        }
+        
+        public IEnumerator LoadEntityResources(DataLoadFlag flag, Action<string> updateStatus)
+        {
+            // Clean up
+            EntityRenderDefinitions.Clear();
+            EntityGeometries.Clear();
+            EntityAnimations.Clear();
+            MaterialRenderTypes.Clear();
+            CachedTextures.Clear();
+            TextureFileTable.Clear();
+
+            // Load animations
+            var animFolderDir = new DirectoryInfo($"{resourcePath}{SP}animations");
+            foreach (var animFile in animFolderDir.GetFiles("*.json", SearchOption.AllDirectories)) // Allow sub folders...
+            {
+                var data = Json.ParseJson(File.ReadAllText(animFile.FullName)).Properties["animations"];
+
+                foreach (var (animName, animVal) in data.Properties)
+                {
+                    var anim = EntityAnimation.FromJson(animVal);
+
+                    EntityAnimations.Add(animName, anim);
+                }
+            }
+
+            LoadExtraEntityModelFolder(resourcePath, playerModelsPath, "player");
+            LoadExtraEntityModelFolder(resourcePath, blockEntityModelsPath, "block_entity");
             
             yield return null;
 
@@ -220,21 +255,21 @@ namespace CraftSharp.Resource.BedrockEntity
                 var entityDef = EntityRenderDefinition.FromJson(resourcePath, data);
                 var entityType = entityDef.EntityType;
 
-                if (EntityRenderDefinitions.ContainsKey(entityType)) // Check version
+                if (EntityRenderDefinitions.TryAdd(entityType, entityDef)) // Check version
+                {
+                    RegisterEntityTextures(entityDef);
+                }
+                else
                 {
                     var prev = EntityRenderDefinitions[entityType];
 
-                    if (ReplaceCheck(prev.FormatVersion, entityDef.FormatVersion)
-                            || ReplaceCheck(prev.MinEngineVersion, entityDef.MinEngineVersion)) // Update this entry
+                    if (CheckShouldReplaceEntry(prev.FormatVersion, entityDef.FormatVersion)
+                            || CheckShouldReplaceEntry(prev.MinEngineVersion, entityDef.MinEngineVersion)) // Update this entry
                     {
                         EntityRenderDefinitions[entityType] = entityDef;
+                        RegisterEntityTextures(entityDef);
                         //Debug.Log($"Updating entry: [{entityType}] {defFile} v{entityDef.MinEngineVersion}");
                     }
-                }
-                else // Just register
-                {
-                    EntityRenderDefinitions.Add(entityType, entityDef);
-                    //Debug.Log($"Creating entry: [{entityType}] {defFile} v{entityDef.MinEngineVersion}");
                 }
             }
 
@@ -249,26 +284,18 @@ namespace CraftSharp.Resource.BedrockEntity
 
                 try
                 {
-                    foreach (var pair in EntityGeometry.TableFromJson(data)) // For each geometry in this file
+                    foreach (var (geoName, geometry) in EntityGeometry.TableFromJson(data)) // For each geometry in this file
                     {
-                        var geoName = pair.Key;
-                        var geometry = pair.Value;
-
-                        if (EntityGeometries.ContainsKey(geoName)) // Check version
+                        if (!EntityGeometries.TryAdd(geoName, geometry)) // Check version
                         {
                             var prev = EntityGeometries[geoName];
 
-                            if (ReplaceCheck(prev.FormatVersion, geometry.FormatVersion)
-                                    || ReplaceCheck(prev.MinEngineVersion, geometry.MinEngineVersion)) // Update this entry
+                            if (CheckShouldReplaceEntry(prev.FormatVersion, geometry.FormatVersion)
+                                    || CheckShouldReplaceEntry(prev.MinEngineVersion, geometry.MinEngineVersion)) // Update this entry
                             {
                                 EntityGeometries[geoName] = geometry;
                                 //Debug.Log($"Updating entry: [{geoName}] {geoFile} v{geometry.MinEngineVersion}");
                             }
-                        }
-                        else // Just register
-                        {
-                            EntityGeometries.Add(geoName, geometry);
-                            //Debug.Log($"Creating entry: [{geoName}] {geoFile} v{geometry.MinEngineVersion}");
                         }
                     }
                 }
@@ -294,8 +321,8 @@ namespace CraftSharp.Resource.BedrockEntity
             */
 
             // Read entity material render types
-            var matDictionary = Json.ParseJson(File.ReadAllText(
-                    PathHelper.GetExtraDataFile("entity_bedrock_model_render_type.json"))).Properties;
+            var matDictionary = Json.ParseJson(File.ReadAllText(PathHelper
+                .GetExtraDataFile("entity_bedrock_model_render_type.json"))).Properties;
             
             foreach (var pair in matDictionary)
             {
