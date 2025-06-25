@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -6,7 +5,9 @@ namespace CraftSharp.Resource
 {
     public class BlockModelLoader
     {
-        public static JsonModel INVALID_MODEL = new JsonModel();
+        private const string ENTITY = "builtin/entity";
+        
+        private static readonly JsonModel INVALID_MODEL = new();
 
         private readonly ResourcePackManager manager;
 
@@ -23,8 +24,8 @@ namespace CraftSharp.Resource
         public JsonModel LoadBlockModel(ResourceLocation identifier)
         {
             // Check if this model is loaded already...
-            if (manager.BlockModelTable.ContainsKey(identifier))
-                return manager.BlockModelTable[identifier];
+            if (manager.BlockModelTable.TryGetValue(identifier, out var blockModel))
+                return blockModel;
             
             if (manager.BlockModelFileTable.TryGetValue(identifier, out string modelFilePath))
             {
@@ -37,41 +38,58 @@ namespace CraftSharp.Resource
                 bool containsElements = modelData.Properties.ContainsKey("elements");
                 bool containsDisplay  = modelData.Properties.ContainsKey("display");
 
-                if (modelData.Properties.ContainsKey("parent"))
+                if (modelData.Properties.TryGetValue("parent", out var parentData))
                 {
-                    ResourceLocation parentIdentifier = ResourceLocation.FromString(modelData.Properties["parent"].StringValue.Replace('\\', '/'));
-                    JsonModel parentModel;
+                    ResourceLocation parentIdentifier = ResourceLocation.FromString(parentData.StringValue.Replace('\\', '/'));
 
-                    if (manager.BlockModelTable.ContainsKey(parentIdentifier))
+                    switch (parentIdentifier.Path)
                     {
-                        // This parent is already loaded, get it...
-                        parentModel = manager.BlockModelTable[parentIdentifier];
-                    }
-                    else
-                    {
-                        // This parent is not yet loaded, load it...
-                        parentModel = LoadBlockModel(parentIdentifier);
-                    }
+                        case ENTITY:
+                            if (manager.BuiltinEntityModels.Add(identifier))
+                            {
+                                Debug.Log($"Marked block model {identifier} as entity model (Direct)");
+                            }
+                            model = new(); // Return a placeholder model
+                            break;
+                        default:
+                            if (manager.BlockModelTable.TryGetValue(parentIdentifier, out var parentModel))
+                            {
+                                // This parent is already loaded, get it...
+                            }
+                            else
+                            {
+                                // This parent is not yet loaded, load it...
+                                parentModel = LoadBlockModel(parentIdentifier);
+                                
+                                if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
+                                    if (manager.BuiltinEntityModels.Add(identifier))
+                                    {
+                                        Debug.Log($"Marked block model {identifier} as builtin entity (Inherited from {parentIdentifier})");
+                                    }
+                            }
 
-                    // Inherit parent textures...
-                    foreach (var tex in parentModel.Textures)
-                    {
-                        model.Textures.Add(tex.Key, tex.Value);
-                    }
+                            // Inherit parent textures...
+                            foreach (var tex in parentModel.Textures)
+                            {
+                                model.Textures.Add(tex.Key, tex.Value);
+                            }
 
-                    // Inherit parent elements only if itself doesn't have those defined...
-                    if (!containsElements)
-                    {
-                        foreach (var elem in parentModel.Elements)
-                        {
-                            model.Elements.Add(elem);
-                        }
-                    }
+                            // Inherit parent elements only if itself doesn't have those defined...
+                            if (!containsElements)
+                            {
+                                foreach (var elem in parentModel.Elements)
+                                {
+                                    model.Elements.Add(elem);
+                                }
+                            }
 
-                    // Inherit parent display transforms...
-                    foreach (var trs in parentModel.DisplayTransforms)
-                    {
-                        model.DisplayTransforms.Add(trs.Key, trs.Value);
+                            // Inherit parent display transforms...
+                            foreach (var trs in parentModel.DisplayTransforms)
+                            {
+                                model.DisplayTransforms.Add(trs.Key, trs.Value);
+                            }
+                            
+                            break;
                     }
                 }
 
@@ -90,14 +108,7 @@ namespace CraftSharp.Resource
                             texRef = new TextureReference(false, texItem.Value.StringValue);
                         }
 
-                        if (model.Textures.ContainsKey(texItem.Key)) // Override this texture reference...
-                        {
-                            model.Textures[texItem.Key] = texRef;
-                        }
-                        else // Add a new texture reference...
-                        {
-                            model.Textures.Add(texItem.Key, texRef);
-                        }
+                        model.Textures[texItem.Key] = texRef;
                     }
                 }
 
@@ -124,14 +135,7 @@ namespace CraftSharp.Resource
 
                         var displayTransform = VectorUtil.Json2DisplayTransform(trsItem.Value);
 
-                        if (model.DisplayTransforms.ContainsKey(displayPos)) // Override this display transform...
-                        {
-                            model.DisplayTransforms[displayPos] = displayTransform;
-                        }
-                        else // Add a new display transform...
-                        {
-                            model.DisplayTransforms.Add(displayPos, displayTransform);
-                        }
+                        model.DisplayTransforms[displayPos] = displayTransform;
                     }
                 }
 
@@ -148,11 +152,9 @@ namespace CraftSharp.Resource
 
                 return model;
             }
-            else
-            {
-                Debug.LogWarning($"Block model file not found: {identifier}");
-                return INVALID_MODEL;
-            }
+
+            Debug.LogWarning($"Block model file not found: {identifier}");
+            return INVALID_MODEL;
         }
     }
 }

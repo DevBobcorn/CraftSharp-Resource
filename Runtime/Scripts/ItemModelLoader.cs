@@ -8,10 +8,9 @@ namespace CraftSharp.Resource
     public class ItemModelLoader
     {
         private const string GENERATED = "builtin/generated";
-        private const string ENTITY    = "builtin/entity";
+        private const string ENTITY = "builtin/entity";
 
-        public static JsonModel INVALID_MODEL = new JsonModel();
-        public static JsonModel EMPTY_MODEL   = new JsonModel();
+        private static readonly JsonModel INVALID_MODEL = new();
 
         private readonly ResourcePackManager manager;
 
@@ -21,9 +20,9 @@ namespace CraftSharp.Resource
         }
 
         // Cached generated models (layerCount, precision, thickness, useItemColor) => model
-        private static Dictionary<int4, List<JsonModelElement>> generatedModels = new();
+        private static readonly Dictionary<int4, List<JsonModelElement>> generatedModels = new();
 
-        public List<JsonModelElement> GetGeneratedItemModelElements(int layerCount, int precision, int thickness, bool useItemColor)
+        public static List<JsonModelElement> GetGeneratedItemModelElements(int layerCount, int precision, int thickness, bool useItemColor)
         {
             int4 modelKey = new(layerCount, precision, thickness, useItemColor ? 1 : 0);
 
@@ -31,7 +30,7 @@ namespace CraftSharp.Resource
             {
                 //Debug.Log($"Generating item model... Layer count: {layerCount} Precision: {precision}");
                 var model = new List<JsonModelElement>();
-                var stepLength = 16F / (float) precision;
+                var stepLength = 16F / precision;
                 var halfThick  = thickness / 2F;
 
                 for (int layer = 0;layer < layerCount;layer++)
@@ -116,8 +115,8 @@ namespace CraftSharp.Resource
         public JsonModel LoadItemModel(ResourceLocation identifier)
         {
             // Check if this model is loaded already...
-            if (manager.RawItemModelTable.ContainsKey(identifier))
-                return manager.RawItemModelTable[identifier];
+            if (manager.RawItemModelTable.TryGetValue(identifier, out var itemModel))
+                return itemModel;
                  
             if (manager.ItemModelFileTable.TryGetValue(identifier, out string modelFilePath))
             {
@@ -130,9 +129,9 @@ namespace CraftSharp.Resource
                 bool containsElements = modelData.Properties.ContainsKey("elements");
                 bool containsDisplay  = modelData.Properties.ContainsKey("display");
 
-                if (modelData.Properties.ContainsKey("parent"))
+                if (modelData.Properties.TryGetValue("parent", out var parentData))
                 {
-                    ResourceLocation parentIdentifier = ResourceLocation.FromString(modelData.Properties["parent"].StringValue.Replace('\\', '/'));
+                    ResourceLocation parentIdentifier = ResourceLocation.FromString(parentData.StringValue.Replace('\\', '/'));
                     
                     switch (parentIdentifier.Path) {
                         case GENERATED:
@@ -143,32 +142,41 @@ namespace CraftSharp.Resource
                             model = new(); // Return a placeholder model
                             break;
                         case ENTITY:
+                            if (manager.BuiltinEntityModels.Add(identifier))
+                            {
+                                Debug.Log($"Marked item model {identifier} as builtin entity (Direct)");
+                            }
+                            model = new(); // Return a placeholder model
                             break;
                         default:
-                            bool parentIsGenerated = false;
-                            JsonModel parentModel;
-
-                            if (manager.RawItemModelTable.ContainsKey(parentIdentifier)
-                                    && !manager.GeneratedItemModels.Contains(parentIdentifier))
+                            if ((manager.RawItemModelTable.TryGetValue(parentIdentifier, out var parentModel)
+                                && !manager.GeneratedItemModels.Contains(parentIdentifier)) ||
+                                manager.BlockModelTable.TryGetValue(parentIdentifier, out parentModel))
                             {
-                                // This parent is not generated and is already loaded, get it...
-                                parentModel = manager.RawItemModelTable[parentIdentifier];
-                            }
-                            else if (manager.BlockModelTable.ContainsKey(parentIdentifier))
-                            {
-                                // This parent is already loaded as a block model, get it...
-                                parentModel = manager.BlockModelTable[parentIdentifier];
+                                // This parent is not generated and is already loaded as an item model
+                                // - or -
+                                // This parent is already loaded an a block model, get it...
+                                if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
+                                    if (manager.BuiltinEntityModels.Add(identifier))
+                                    {
+                                        Debug.Log($"Marked item model {identifier} as builtin entity (Inherited from {parentIdentifier})");
+                                    }
                             }
                             else
                             {
                                 // This parent is not yet loaded or is a generated model, load it...
                                 parentModel = LoadItemModel(parentIdentifier);
-                                parentIsGenerated = manager.GeneratedItemModels.Contains(parentIdentifier);
-
-                                if (parentIsGenerated) // Also mark self as generated
+                                
+                                if (manager.GeneratedItemModels.Contains(parentIdentifier)) // Also mark self as generated
                                     if (manager.GeneratedItemModels.Add(identifier))
                                     {
-                                        //Debug.Log($"Marked item model {identifier} as generated (Inherited)");
+                                        //Debug.Log($"Marked item model {identifier} as generated (Inherited from {parentIdentifier})");
+                                    }
+                                
+                                if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
+                                    if (manager.BuiltinEntityModels.Add(identifier))
+                                    {
+                                        Debug.Log($"Marked item model {identifier} as builtin entity (Inherited from {parentIdentifier})");
                                     }
 
                                 if (parentModel == INVALID_MODEL)
@@ -216,14 +224,7 @@ namespace CraftSharp.Resource
                             texRef = new TextureReference(false, texItem.Value.StringValue);
                         }
 
-                        if (model.Textures.ContainsKey(texItem.Key)) // Override this texture reference...
-                        {
-                            model.Textures[texItem.Key] = texRef;
-                        }
-                        else // Add a new texture reference...
-                        {
-                            model.Textures.Add(texItem.Key, texRef);
-                        }
+                        model.Textures[texItem.Key] = texRef;
                     }
                 }
 
@@ -250,14 +251,7 @@ namespace CraftSharp.Resource
 
                         var displayTransform = VectorUtil.Json2DisplayTransform(trsItem.Value);
 
-                        if (model.DisplayTransforms.ContainsKey(displayPos)) // Override this display transform...
-                        {
-                            model.DisplayTransforms[displayPos] = displayTransform;
-                        }
-                        else // Add a new display transform...
-                        {
-                            model.DisplayTransforms.Add(displayPos, displayTransform);
-                        }
+                        model.DisplayTransforms[displayPos] = displayTransform;
                     }
                 }
 
@@ -274,11 +268,9 @@ namespace CraftSharp.Resource
 
                 return model;
             }
-            else
-            {
-                Debug.LogWarning($"Item model file not found: {identifier}");
-                return INVALID_MODEL;
-            }
+
+            Debug.LogWarning($"Item model file not found: {identifier}");
+            return INVALID_MODEL;
         }
     }
 }

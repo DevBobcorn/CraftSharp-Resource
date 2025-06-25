@@ -53,6 +53,8 @@ namespace CraftSharp.Resource
         // Item numeral id -> Item model
         public readonly Dictionary<int, ItemModel> ItemModelTable = new();
 
+        public readonly HashSet<ResourceLocation> BuiltinEntityModels = new();
+        
         public readonly HashSet<ResourceLocation> GeneratedItemModels = new();
 
         public readonly BlockModelLoader BlockModelLoader;
@@ -121,6 +123,7 @@ namespace CraftSharp.Resource
             StateModelTable.Clear();
             RawItemModelTable.Clear();
             ItemModelTable.Clear();
+            BuiltinEntityModels.Clear();
             GeneratedItemModels.Clear();
             ParticleMeshesTable.Clear();
             EntityTexture2DTable.Clear();
@@ -286,16 +289,12 @@ namespace CraftSharp.Resource
 
                         var itemGeometry = new ItemGeometryBuilder(rawModel).Build();
 
-                        RenderType renderType;
-
-                        if (GeneratedItemModels.Contains(itemModelId))
-                            renderType = RenderType.CUTOUT; // Set render type to cutout for all generated item models
-                        else
-                            renderType = BlockStatePalette.INSTANCE.RenderTypeTable.GetValueOrDefault(itemId, RenderType.SOLID);
+                        // Set render type to cutout for all generated item models
+                        var renderType = generated ? RenderType.CUTOUT : BlockStatePalette
+                            .INSTANCE.RenderTypeTable.GetValueOrDefault(itemId, RenderType.SOLID);
 
                         var itemModel = new ItemModel(itemGeometry, renderType);
                         
-
                         // Look for and append geometry overrides to the item model
                         Json.JSONData modelData = Json.ParseJson(File.ReadAllText(path));
 
