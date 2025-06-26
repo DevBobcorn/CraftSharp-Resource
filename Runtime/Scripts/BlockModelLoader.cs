@@ -5,8 +5,6 @@ namespace CraftSharp.Resource
 {
     public class BlockModelLoader
     {
-        private const string ENTITY = "builtin/entity";
-        
         private static readonly JsonModel INVALID_MODEL = new();
 
         private readonly ResourcePackManager manager;
@@ -42,54 +40,41 @@ namespace CraftSharp.Resource
                 {
                     ResourceLocation parentIdentifier = ResourceLocation.FromString(parentData.StringValue.Replace('\\', '/'));
 
-                    switch (parentIdentifier.Path)
+                    if (manager.BlockModelTable.TryGetValue(parentIdentifier, out var parentModel))
                     {
-                        case ENTITY:
+                        // This parent is already loaded, get it...
+                    }
+                    else
+                    {
+                        // This parent is not yet loaded, load it...
+                        parentModel = LoadBlockModel(parentIdentifier);
+                                
+                        if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
                             if (manager.BuiltinEntityModels.Add(identifier))
                             {
-                                Debug.Log($"Marked block model {identifier} as entity model (Direct)");
+                                Debug.Log($"Marked block model {identifier} as builtin entity (Inherited from {parentIdentifier})");
                             }
-                            model = new(); // Return a placeholder model
-                            break;
-                        default:
-                            if (manager.BlockModelTable.TryGetValue(parentIdentifier, out var parentModel))
-                            {
-                                // This parent is already loaded, get it...
-                            }
-                            else
-                            {
-                                // This parent is not yet loaded, load it...
-                                parentModel = LoadBlockModel(parentIdentifier);
-                                
-                                if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
-                                    if (manager.BuiltinEntityModels.Add(identifier))
-                                    {
-                                        Debug.Log($"Marked block model {identifier} as builtin entity (Inherited from {parentIdentifier})");
-                                    }
-                            }
+                    }
 
-                            // Inherit parent textures...
-                            foreach (var tex in parentModel.Textures)
-                            {
-                                model.Textures.Add(tex.Key, tex.Value);
-                            }
+                    // Inherit parent textures...
+                    foreach (var tex in parentModel.Textures)
+                    {
+                        model.Textures.Add(tex.Key, tex.Value);
+                    }
 
-                            // Inherit parent elements only if itself doesn't have those defined...
-                            if (!containsElements)
-                            {
-                                foreach (var elem in parentModel.Elements)
-                                {
-                                    model.Elements.Add(elem);
-                                }
-                            }
+                    // Inherit parent elements only if itself doesn't have those defined...
+                    if (!containsElements)
+                    {
+                        foreach (var elem in parentModel.Elements)
+                        {
+                            model.Elements.Add(elem);
+                        }
+                    }
 
-                            // Inherit parent display transforms...
-                            foreach (var trs in parentModel.DisplayTransforms)
-                            {
-                                model.DisplayTransforms.Add(trs.Key, trs.Value);
-                            }
-                            
-                            break;
+                    // Inherit parent display transforms...
+                    foreach (var trs in parentModel.DisplayTransforms)
+                    {
+                        model.DisplayTransforms.Add(trs.Key, trs.Value);
                     }
                 }
 

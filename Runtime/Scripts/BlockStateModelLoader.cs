@@ -49,7 +49,6 @@ namespace CraftSharp.Resource
                 // Block states can contain properties don't make a difference to their block geometry list
                 // In this way they can share a single copy of geometry list...
                 var geometries = new List<BlockGeometry>();
-                var blockModelIds = new HashSet<ResourceLocation>();
                 
                 if (variant.Value.Type == Json.JSONData.DataType.Array) // A list...
                 {
@@ -58,7 +57,6 @@ namespace CraftSharp.Resource
                         var variantWrapper = BlockModelWrapper.FromJson(manager, wrapperData);
                         particleTexture = variantWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
                         geometries.Add(new BlockGeometryBuilder(variantWrapper).Build());
-                        blockModelIds.Add(variantWrapper.blockModelId);
                     }
                 }
                 else // Only a single item...
@@ -66,7 +64,6 @@ namespace CraftSharp.Resource
                     var variantWrapper = BlockModelWrapper.FromJson(manager, variant.Value);
                     particleTexture = variantWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
                     geometries.Add(new BlockGeometryBuilder(variantWrapper).Build());
-                    blockModelIds.Add(variantWrapper.blockModelId);
                 }
 
                 foreach (var stateId in BlockStatePalette.INSTANCE.GetAllNumIds(blockId))
@@ -76,7 +73,7 @@ namespace CraftSharp.Resource
                     if (!manager.StateModelTable.ContainsKey(stateId) && conditions.Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                     {
                         // Then this block state belongs to the current variant...
-                        manager.StateModelTable.Add(stateId, new(geometries, blockModelIds, renderType, offsetType, particleTexture));
+                        manager.StateModelTable.Add(stateId, new(geometries, renderType, offsetType, particleTexture));
                     }
                 }
             }
@@ -88,7 +85,6 @@ namespace CraftSharp.Resource
                 .GetAllNumIds(blockId).ToDictionary(stateId => stateId, _ => new BlockGeometryBuilder());
 
             var particleTexture = ResourceLocation.INVALID;
-            var blockModelIds = new HashSet<ResourceLocation>();
 
             foreach (var part in parts)
             {
@@ -148,8 +144,6 @@ namespace CraftSharp.Resource
                         foreach (var stateItem in buildersList) // For each state
                             buildersList[stateItem.Key].AppendWrapper(partWrapper);
                     }
-                    
-                    blockModelIds.Add(partWrapper.blockModelId);
                 }
             }
 
@@ -157,7 +151,7 @@ namespace CraftSharp.Resource
             foreach (var resultItem in buildersList)
             {
                 var geometries = new List<BlockGeometry> { resultItem.Value.Build() };
-                manager.StateModelTable.Add(resultItem.Key, new(geometries, blockModelIds, renderType, offsetType, particleTexture));
+                manager.StateModelTable.Add(resultItem.Key, new(geometries, renderType, offsetType, particleTexture));
             }
         }
     }
