@@ -144,7 +144,7 @@ namespace CraftSharp.Resource
                         case ENTITY:
                             if (manager.BuiltinEntityModels.Add(identifier))
                             {
-                                Debug.Log($"Marked item model {identifier} as builtin entity (Direct)");
+                                //Debug.Log($"Marked item model {identifier} as builtin entity (Direct)");
                             }
                             model = new(); // Return a placeholder model
                             break;
@@ -159,7 +159,7 @@ namespace CraftSharp.Resource
                                 if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
                                     if (manager.BuiltinEntityModels.Add(identifier))
                                     {
-                                        Debug.Log($"Marked item model {identifier} as builtin entity (Inherited from {parentIdentifier})");
+                                        //Debug.Log($"Marked item model {identifier} as builtin entity (Inherited from {parentIdentifier})");
                                     }
                             }
                             else
@@ -176,7 +176,7 @@ namespace CraftSharp.Resource
                                 if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
                                     if (manager.BuiltinEntityModels.Add(identifier))
                                     {
-                                        Debug.Log($"Marked item model {identifier} as builtin entity (Inherited from {parentIdentifier})");
+                                        //Debug.Log($"Marked item model {identifier} as builtin entity (Inherited from {parentIdentifier})");
                                     }
 
                                 if (parentModel == INVALID_MODEL)

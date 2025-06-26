@@ -22,6 +22,21 @@ namespace CraftSharp.Resource.BedrockEntity
         
         // Texture name -> Texture file path (For atlas)
         private readonly Dictionary<string, string> TextureFileTable = new();
+
+        private readonly Dictionary<string, Dictionary<string, string>> ExtraEntityModelTextures = new()
+        {
+            ["chest"] = new()
+            {
+                ["normal"] = "textures/entity/chest/normal",
+                ["trapped"] = "textures/entity/chest/trapped",
+                ["ender"] = "textures/entity/chest/ender"
+            },
+            ["large_chest"] = new()
+            {
+                ["normal"] = "textures/entity/chest/double_normal",
+                ["trapped"] = "textures/entity/chest/trapped_double"
+            }
+        };
         
         private readonly string resourcePath;
         private readonly string playerModelsPath;
@@ -103,16 +118,11 @@ namespace CraftSharp.Resource.BedrockEntity
                     
                     var dummyEntityIdentifier = new ResourceLocation(extraModelFolder.Name);
                     var defaultTexturePath = $"{modelFolderRoot}{SP}{extraModelFolder.Name}"; // extra_models/foo/foo.png
-                    
-                    var baseResourceTextureDir = new DirectoryInfo( // bedrock_res/textures/foo/bar.png
-                        $"{baseResourcePath}{SP}textures{SP}entity{SP}{extraModelFolder.Name}");
 
-                    if (baseResourceTextureDir.Exists)
+                    if (ExtraEntityModelTextures.TryGetValue(extraModelFolder.Name, out var textureList))
                     {
-                        var textureList = baseResourceTextureDir.GetFiles("*.png", SearchOption.TopDirectoryOnly)
-                            .Union(baseResourceTextureDir.GetFiles("*.tga", SearchOption.TopDirectoryOnly));
-                        
-                        texturePaths = textureList.ToDictionary(x => $"{extraModelFolder.Name}/{x.Name[..^4]}", x => x.FullName);
+                        texturePaths = textureList.ToDictionary(x => $"{extraModelFolder.Name}/{x.Key}",
+                            x => $"{baseResourcePath}{SP}{x.Value}");
                     }
                     else
                     {

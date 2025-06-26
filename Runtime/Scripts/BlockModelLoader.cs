@@ -48,12 +48,6 @@ namespace CraftSharp.Resource
                     {
                         // This parent is not yet loaded, load it...
                         parentModel = LoadBlockModel(parentIdentifier);
-                                
-                        if (manager.BuiltinEntityModels.Contains(parentIdentifier)) // Also mark self as builtin entity
-                            if (manager.BuiltinEntityModels.Add(identifier))
-                            {
-                                Debug.Log($"Marked block model {identifier} as builtin entity (Inherited from {parentIdentifier})");
-                            }
                     }
 
                     // Inherit parent textures...
