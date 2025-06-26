@@ -7,42 +7,44 @@ namespace CraftSharp.Resource
     {
         public readonly JsonModel model;
         public readonly int2 zyRot;
-        public readonly bool uvlock;
+        public readonly bool uvLock;
+        public readonly ResourceLocation blockModelId;
 
-        public BlockModelWrapper(JsonModel model, int2 zyRot, bool uvlock)
+        public BlockModelWrapper(JsonModel model, int2 zyRot, bool uvLock, ResourceLocation blockModelId)
         {
             this.model = model;
             this.zyRot = zyRot;
-            this.uvlock = uvlock;
+            this.uvLock = uvLock;
+            this.blockModelId = blockModelId;
         }
 
         public static BlockModelWrapper FromJson(ResourcePackManager manager, Json.JSONData data)
         {
-            if (data.Properties.ContainsKey("model"))
+            if (data.Properties.TryGetValue("model", out var modelVal))
             {
-                ResourceLocation modelIdentifier = ResourceLocation.FromString(data.Properties["model"].StringValue);
+                var blockModelId = ResourceLocation.FromString(modelVal.StringValue);
 
                 bool modelFound;
 
                 // Check if the model can be found...
-                if (manager.BlockModelTable.TryGetValue(modelIdentifier, out JsonModel blockModel))
+                if (manager.BlockModelTable.TryGetValue(blockModelId, out JsonModel blockModel))
                 {
                     modelFound = true;
                 }
                 else
                 {
-                    modelIdentifier = ResourceLocation.FromString("block/" + data.Properties["model"].StringValue);
-                    modelFound = manager.BlockModelTable.TryGetValue(modelIdentifier, out blockModel);
+                    blockModelId = new ResourceLocation(blockModelId.Namespace, "block/" + blockModelId.Path);
+                    modelFound = manager.BlockModelTable.TryGetValue(blockModelId, out blockModel);
                 }
 
                 if (modelFound)
                 {
                     int zr = 0, yr = 0;
-                    bool uvlock = false;
+                    bool uvLock = false;
 
-                    if (data.Properties.ContainsKey("x")) // Block z rotation
+                    if (data.Properties.TryGetValue("x", out var val)) // Block z rotation
                     {
-                        zr = data.Properties["x"].StringValue switch
+                        zr = val.StringValue switch
                         {
                             "90"  => 1,
                             "180" => 2,
@@ -51,9 +53,9 @@ namespace CraftSharp.Resource
                         };
                     }
 
-                    if (data.Properties.ContainsKey("y")) // Block y rotation
+                    if (data.Properties.TryGetValue("y", out val)) // Block y rotation
                     {
-                        yr = data.Properties["y"].StringValue switch
+                        yr = val.StringValue switch
                         {
                             "90"  => 1,
                             "180" => 2,
@@ -62,23 +64,18 @@ namespace CraftSharp.Resource
                         };
                     }
 
-                    if (data.Properties.ContainsKey("uvlock"))
-                        bool.TryParse(data.Properties["uvlock"].StringValue, out uvlock);
+                    if (data.Properties.TryGetValue("uvlock", out val))
+                        bool.TryParse(val.StringValue, out uvLock);
 
-                    return new BlockModelWrapper(blockModel, new int2(zr, yr), uvlock);
+                    return new BlockModelWrapper(blockModel, new int2(zr, yr), uvLock, blockModelId);
                 }
-                else
-                {
-                    Debug.LogWarning($"Model {modelIdentifier} is not found!");
-                    return null;
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"Wrapper does not contain block model!");
+
+                Debug.LogWarning($"Model {blockModelId} is not found!");
                 return null;
             }
-            
+
+            Debug.LogWarning("Wrapper does not contain block model!");
+            return null;
         }
     }
 }

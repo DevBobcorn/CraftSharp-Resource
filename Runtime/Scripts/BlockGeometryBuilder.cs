@@ -11,25 +11,25 @@ namespace CraftSharp.Resource
         private const float MC_VERT_SCALE = 16F;
         private const float MC_UV_SCALE = 16F;
 
-        public readonly Dictionary<CullDir, List<float3>> verticies = new();
-        public readonly Dictionary<CullDir, List<float3>> uvs       = new();
-        public readonly Dictionary<CullDir, List<float4>> uvAnims   = new();
-        public readonly Dictionary<CullDir, List<int>> tintIndices  = new();
-        public readonly Dictionary<CullDir, uint> vertIndexOffset   = new();
+        private readonly Dictionary<CullDir, List<float3>> vertices = new();
+        private readonly Dictionary<CullDir, List<float3>> uvs      = new();
+        private readonly Dictionary<CullDir, List<float4>> uvAnims  = new();
+        private readonly Dictionary<CullDir, List<int>> tintIndices = new();
+        private readonly Dictionary<CullDir, uint> vertIndexOffset  = new();
 
         /// <summary>
         /// Cull directions for vertices on faces not being culled on any direction(CullDir.NONE), used
         /// as a reference for some cull direction based calculations. Its length should be a 1/4 of
-        /// verticies[CullDir.NONE].Length, because 4 vertices on the same quad share a same direction.
+        /// vertices[CullDir.NONE].Length, because 4 vertices on the same quad share a same direction.
         /// </summary>
-        public readonly List<CullDir> noCullingVertexDirections     = new();
+        private readonly List<CullDir> noCullingVertexDirections = new();
 
         public BlockGeometryBuilder()
         {
             // Initialize these collections...
             foreach (CullDir dir in Enum.GetValues(typeof (CullDir)))
             {
-                verticies.Add(dir, new List<float3>());
+                vertices.Add(dir, new List<float3>());
                 uvs.Add(dir, new List<float3>());
                 uvAnims.Add(dir, new List<float4>());
                 tintIndices.Add(dir, new List<int>());
@@ -46,7 +46,7 @@ namespace CraftSharp.Resource
         public BlockGeometry Build()
         {
             return new BlockGeometry(
-                verticies.ToDictionary(x => x.Key, x => x.Value.ToArray()),
+                vertices.ToDictionary(x => x.Key, x => x.Value.ToArray()),
                 uvs.ToDictionary(x => x.Key, x => x.Value.ToArray()),
                 uvAnims.ToDictionary(x => x.Key, x => x.Value.ToArray()),
                 tintIndices.ToDictionary(x => x.Key, x => x.Value.ToArray()),
@@ -61,12 +61,12 @@ namespace CraftSharp.Resource
                 // Build things up!
                 foreach (var elem in wrapper.model.Elements)
                 {
-                    AppendElement(wrapper.model, elem, wrapper.zyRot, wrapper.uvlock);
+                    AppendElement(wrapper.model, elem, wrapper.zyRot, wrapper.uvLock);
                 }
             }
         }
 
-        private void AppendElement(JsonModel model, JsonModelElement elem, int2 zyRot, bool uvlock)
+        private void AppendElement(JsonModel model, JsonModelElement elem, int2 zyRot, bool uvLock)
         {
             float lx = Mathf.Min(elem.from.x, elem.to.x) / MC_VERT_SCALE;
             float mx = Mathf.Max(elem.from.x, elem.to.x) / MC_VERT_SCALE;
@@ -95,7 +95,7 @@ namespace CraftSharp.Resource
                 // Select the current face
                 var face = facePair.Value;
 
-                // Update current cull direcion...
+                // Update current cull direction...
                 var cullDir = cullMap[zyRot][face.cullDir];
 
                 // Store face direction for vertices on no-culling faces (Used by calculations based on face direction)
@@ -111,52 +111,50 @@ namespace CraftSharp.Resource
                 switch (facePair.Key) // Build face in that direction
                 {
                     case FaceDir.UP:    // Unity +Y
-                        verticies[cullDir].Add(elemVerts[2]); // 0
-                        verticies[cullDir].Add(elemVerts[3]); // 1
-                        verticies[cullDir].Add(elemVerts[6]); // 2
-                        verticies[cullDir].Add(elemVerts[7]); // 3
+                        vertices[cullDir].Add(elemVerts[2]); // 0
+                        vertices[cullDir].Add(elemVerts[3]); // 1
+                        vertices[cullDir].Add(elemVerts[6]); // 2
+                        vertices[cullDir].Add(elemVerts[7]); // 3
                         break;
                     case FaceDir.DOWN:  // Unity -Y
-                        verticies[cullDir].Add(elemVerts[4]); // 0
-                        verticies[cullDir].Add(elemVerts[5]); // 1
-                        verticies[cullDir].Add(elemVerts[0]); // 2
-                        verticies[cullDir].Add(elemVerts[1]); // 3
+                        vertices[cullDir].Add(elemVerts[4]); // 0
+                        vertices[cullDir].Add(elemVerts[5]); // 1
+                        vertices[cullDir].Add(elemVerts[0]); // 2
+                        vertices[cullDir].Add(elemVerts[1]); // 3
                         break;
                     case FaceDir.SOUTH: // Unity +X
-                        verticies[cullDir].Add(elemVerts[6]); // 0
-                        verticies[cullDir].Add(elemVerts[7]); // 1
-                        verticies[cullDir].Add(elemVerts[4]); // 2
-                        verticies[cullDir].Add(elemVerts[5]); // 3
+                        vertices[cullDir].Add(elemVerts[6]); // 0
+                        vertices[cullDir].Add(elemVerts[7]); // 1
+                        vertices[cullDir].Add(elemVerts[4]); // 2
+                        vertices[cullDir].Add(elemVerts[5]); // 3
                         break;
                     case FaceDir.NORTH: // Unity -X
-                        verticies[cullDir].Add(elemVerts[3]); // 0
-                        verticies[cullDir].Add(elemVerts[2]); // 1
-                        verticies[cullDir].Add(elemVerts[1]); // 2
-                        verticies[cullDir].Add(elemVerts[0]); // 3
+                        vertices[cullDir].Add(elemVerts[3]); // 0
+                        vertices[cullDir].Add(elemVerts[2]); // 1
+                        vertices[cullDir].Add(elemVerts[1]); // 2
+                        vertices[cullDir].Add(elemVerts[0]); // 3
                         break;
                     case FaceDir.EAST:  // Unity +Z
-                        verticies[cullDir].Add(elemVerts[7]); // 0
-                        verticies[cullDir].Add(elemVerts[3]); // 1
-                        verticies[cullDir].Add(elemVerts[5]); // 2
-                        verticies[cullDir].Add(elemVerts[1]); // 3
+                        vertices[cullDir].Add(elemVerts[7]); // 0
+                        vertices[cullDir].Add(elemVerts[3]); // 1
+                        vertices[cullDir].Add(elemVerts[5]); // 2
+                        vertices[cullDir].Add(elemVerts[1]); // 3
                         break;
                     case FaceDir.WEST:  // Unity -Z
-                        verticies[cullDir].Add(elemVerts[2]); // 0
-                        verticies[cullDir].Add(elemVerts[6]); // 1
-                        verticies[cullDir].Add(elemVerts[0]); // 2
-                        verticies[cullDir].Add(elemVerts[4]); // 3
+                        vertices[cullDir].Add(elemVerts[2]); // 0
+                        vertices[cullDir].Add(elemVerts[6]); // 1
+                        vertices[cullDir].Add(elemVerts[0]); // 2
+                        vertices[cullDir].Add(elemVerts[4]); // 3
                         break;
                 }
 
                 ResourceLocation texIdentifier = model.ResolveTextureName(face.texName);
 
-                // This value is mapped only when uvlock is on, according to this block state's
+                // This value is mapped only when uvLock is on, according to this block state's
                 // state rotation, and it rotates the area of texture which is used on the face
-                int uvAreaRot = stateRotated && uvlock ? uvlockMap[zyRot][facePair.Key] : 0;
+                int uvAreaRot = stateRotated && uvLock ? uvLockMap[zyRot][facePair.Key] : 0;
 
-                var uvInfo = ResourcePackManager.Instance.GetUVs(texIdentifier, face.uv / MC_UV_SCALE, uvAreaRot);
-                var remappedUVs = uvInfo.uvs;
-                var animInfo = uvInfo.anim;
+                var (remappedUVs, animInfo) = ResourcePackManager.Instance.GetUVs(texIdentifier, face.uv / MC_UV_SCALE, uvAreaRot);
 
                 // This rotation doesn't change the area of texture used...
                 // See https://minecraft.fandom.com/wiki/Model#Block_models
@@ -198,7 +196,7 @@ namespace CraftSharp.Resource
                 for (int i = 0;i < 4;i++)
                     tintIndices[cullDir].Add(face.tintIndex);
 
-                // Increament vertex index offset of this cull direction
+                // Increment vertex index offset of this cull direction
                 vertIndexOffset[cullDir] += 4; // Four vertices per quad
             }
         }
@@ -207,9 +205,9 @@ namespace CraftSharp.Resource
         {
             var areaRotMap = new Dictionary<int2, Dictionary<FaceDir, int>>();
 
-            for (int roty = 0;roty < 4;roty++)
+            for (int rotY = 0;rotY < 4;rotY++)
             {
-                for (int rotz = 0;rotz < 4;rotz++)
+                for (int rotZ = 0;rotZ < 4;rotZ++)
                 {
                     // Store actual rotation values currently applied to these faces (due to vertex(mesh) rotation)
                     var localRot = new Dictionary<FaceDir, int>();
@@ -217,23 +215,23 @@ namespace CraftSharp.Resource
                     foreach (FaceDir dir in Enum.GetValues(typeof (FaceDir)))
                         localRot.Add(dir, 0);
 
-                    switch (rotz)
+                    switch (rotZ)
                     {
                         case 0:
-                            localRot[FaceDir.UP]   =  roty;
-                            localRot[FaceDir.DOWN] = -roty;
+                            localRot[FaceDir.UP]   =  rotY;
+                            localRot[FaceDir.DOWN] = -rotY;
                             break;
                         case 1: // Locally rotate 90 Deg Clockwise
                             localRot[FaceDir.UP]    =  2;
                             localRot[FaceDir.DOWN]  =  0;
                             localRot[FaceDir.WEST]  = -1;
                             localRot[FaceDir.EAST]  =  1;
-                            localRot[FaceDir.SOUTH] =  roty;
-                            localRot[FaceDir.NORTH] = -roty + 2;
+                            localRot[FaceDir.SOUTH] =  rotY;
+                            localRot[FaceDir.NORTH] = -rotY + 2;
                             break;
                         case 2: // Locally rotate 180 Deg
-                            localRot[FaceDir.UP]    = -roty;
-                            localRot[FaceDir.DOWN]  =  roty;
+                            localRot[FaceDir.UP]    = -rotY;
+                            localRot[FaceDir.DOWN]  =  rotY;
                             localRot[FaceDir.WEST]  =  2;
                             localRot[FaceDir.EAST]  =  2;
                             localRot[FaceDir.SOUTH] =  2;
@@ -244,8 +242,8 @@ namespace CraftSharp.Resource
                             localRot[FaceDir.DOWN]  =  2;
                             localRot[FaceDir.WEST]  =  1;
                             localRot[FaceDir.EAST]  = -1;
-                            localRot[FaceDir.SOUTH] = -roty;
-                            localRot[FaceDir.NORTH] =  roty + 2;
+                            localRot[FaceDir.SOUTH] = -rotY;
+                            localRot[FaceDir.NORTH] =  rotY + 2;
                             break;
                     }
 
@@ -255,30 +253,29 @@ namespace CraftSharp.Resource
                     foreach (FaceDir dir in Enum.GetValues(typeof (FaceDir)))
                         result.Add(dir, (8 - localRot.GetValueOrDefault(dir, 0)) % 4);
 
-                    areaRotMap.Add(new int2(rotz, roty), result);
+                    areaRotMap.Add(new int2(rotZ, rotY), result);
                 }
             }
             
             return areaRotMap;
         }
 
-        private static readonly Dictionary<int2, Dictionary<FaceDir, int>> uvlockMap = CreateUVLockMap();
+        private static readonly Dictionary<int2, Dictionary<FaceDir, int>> uvLockMap = CreateUVLockMap();
 
         private static Dictionary<int2, Dictionary<CullDir, CullDir>> CreateCullMap()
         {
             var cullRemap = new Dictionary<int2, Dictionary<CullDir, CullDir>>();
             var rotYMap = new CullDir[]{ CullDir.NORTH, CullDir.EAST, CullDir.SOUTH, CullDir.WEST };
 
-            for (int roty = 0;roty < 4;roty++)
+            for (int rotY = 0;rotY < 4;rotY++)
             {
                 // First shift directions around Y axis...
-                var rotYMapRotated = rotYMap.Skip(roty).Concat(rotYMap.Take(roty)).ToArray();
+                var rotYMapRotated = rotYMap.Skip(rotY).Concat(rotYMap.Take(rotY)).ToArray();
                 var rotZMap = new CullDir[]{ rotYMapRotated[0], CullDir.DOWN, rotYMapRotated[2], CullDir.UP };
-                for (int rotz = 0;rotz < 4;rotz++)
+                for (int rotZ = 0;rotZ < 4;rotZ++)
                 {
-                    //Debug.Log("Rotation: z: " + rotx + ", y: " + roty);
                     // Then shift directions around the rotated Z axis...
-                    var rotZMapRotated = rotZMap.Skip(rotz).Concat(rotZMap.Take(rotz)).ToArray();
+                    var rotZMapRotated = rotZMap.Skip(rotZ).Concat(rotZMap.Take(rotZ)).ToArray();
 
                     var rotYRemap = new Dictionary<CullDir, CullDir>(){
                         { rotYMap[0], rotYMapRotated[0] }, { rotYMap[1], rotYMapRotated[1] },
@@ -297,11 +294,9 @@ namespace CraftSharp.Resource
                             rotYRemap.GetValueOrDefault(original, original),
                             rotYRemap.GetValueOrDefault(original, original)
                         );
-                        //Debug.Log(original + " => " + target);
                         remap.Add(original, target);
                     }
-
-                    cullRemap.Add(new int2(rotz, roty), remap);
+                    cullRemap.Add(new int2(rotZ, rotY), remap);
                 }
             }
 

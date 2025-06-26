@@ -6,7 +6,7 @@ namespace CraftSharp.Resource
 {
     public class JsonModel
     {
-        private const int MAXDEPTH = 50;
+        private const int MAX_DEPTH = 50;
         
         // texName -> texture resource location
         public readonly Dictionary<string, TextureReference> Textures = new();
@@ -15,9 +15,9 @@ namespace CraftSharp.Resource
 
         public ResourceLocation ResolveTextureName(string texName)
         {
-            if (Textures.ContainsKey(texName))
+            if (Textures.TryGetValue(texName, out var texRef))
             {
-                return ResolveTextureRef(Textures[texName]);
+                return ResolveTextureRef(texRef);
             }
 
             // Might be templates who have place holder textures...
@@ -31,9 +31,9 @@ namespace CraftSharp.Resource
             int depth = 0;
             while (texRef.isPointer)
             {
-                if (Textures.ContainsKey(texRef.name)) // Pointer valid, go to that tex ref
+                if (Textures.TryGetValue(texRef.name, out var texRef2)) // Pointer valid, go to that tex ref
                 {
-                    texRef = Textures[texRef.name];
+                    texRef = texRef2;
                 }
                 else
                 {
@@ -42,7 +42,7 @@ namespace CraftSharp.Resource
                     return ResourceLocation.INVALID;
                 }
 
-                if (depth > MAXDEPTH)
+                if (depth > MAX_DEPTH)
                 {
                     Debug.LogWarning($"Failed to get texture {texRef.name}, there might be a reference loop");
                     return ResourceLocation.INVALID;

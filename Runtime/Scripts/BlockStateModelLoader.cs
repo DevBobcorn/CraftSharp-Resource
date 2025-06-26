@@ -7,7 +7,7 @@ namespace CraftSharp.Resource
 {
     public class BlockStateModelLoader
     {
-        private static readonly string PARTICLE_TEXTURE_NAME = "particle";
+        private const string PARTICLE_TEXTURE_NAME = "particle";
         private readonly ResourcePackManager manager;
 
         public BlockStateModelLoader(ResourcePackManager manager)
@@ -21,25 +21,24 @@ namespace CraftSharp.Resource
             {
                 Json.JSONData stateData = Json.ParseJson(File.ReadAllText(path));
 
-                if (stateData.Properties.ContainsKey("variants"))
+                if (stateData.Properties.TryGetValue("variants", out var val))
                 {
-                    //Debug.Log("Load variant state model: " + blockId.ToString());
-                    LoadVariantsFormat(stateData.Properties["variants"].Properties, blockId, renderType, offsetType, manager);
+                    //Debug.Log("Load variants state model: " + blockId.ToString());
+                    LoadVariantsFormat(val.Properties, blockId, renderType, offsetType, manager);
                 }
-                else if (stateData.Properties.ContainsKey("multipart"))
+                else if (stateData.Properties.TryGetValue("multipart", out val))
                 {
                     //Debug.Log("Load multipart state model: " + blockId.ToString());
-                    LoadMultipartFormat(stateData.Properties["multipart"].DataArray, blockId, renderType, offsetType, manager);
+                    LoadMultipartFormat(val.DataArray, blockId, renderType, offsetType, manager);
                 }
                 else
                     Debug.LogWarning("Invalid state model file: " + path);
-
             }
             else
                 Debug.LogWarning("Cannot find block state model file: " + path);
         }
 
-        private void LoadVariantsFormat(Dictionary<string, Json.JSONData> variants, ResourceLocation blockId,
+        private static void LoadVariantsFormat(Dictionary<string, Json.JSONData> variants, ResourceLocation blockId,
                 RenderType renderType, OffsetType offsetType, ResourcePackManager manager)
         {
             foreach (var variant in variants)
@@ -49,21 +48,25 @@ namespace CraftSharp.Resource
 
                 // Block states can contain properties don't make a difference to their block geometry list
                 // In this way they can share a single copy of geometry list...
-                List<BlockGeometry> results = new();
+                var geometries = new List<BlockGeometry>();
+                var blockModelIds = new HashSet<ResourceLocation>();
+                
                 if (variant.Value.Type == Json.JSONData.DataType.Array) // A list...
                 {
                     foreach (var wrapperData in variant.Value.DataArray)
                     {
                         var variantWrapper = BlockModelWrapper.FromJson(manager, wrapperData);
                         particleTexture = variantWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
-                        results.Add(new BlockGeometryBuilder(variantWrapper).Build());
+                        geometries.Add(new BlockGeometryBuilder(variantWrapper).Build());
+                        blockModelIds.Add(variantWrapper.blockModelId);
                     }
                 }
                 else // Only a single item...
                 {
                     var variantWrapper = BlockModelWrapper.FromJson(manager, variant.Value);
                     particleTexture = variantWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
-                    results.Add(new BlockGeometryBuilder(BlockModelWrapper.FromJson(manager, variant.Value)).Build());
+                    geometries.Add(new BlockGeometryBuilder(variantWrapper).Build());
+                    blockModelIds.Add(variantWrapper.blockModelId);
                 }
 
                 foreach (var stateId in BlockStatePalette.INSTANCE.GetAllNumIds(blockId))
@@ -73,45 +76,42 @@ namespace CraftSharp.Resource
                     if (!manager.StateModelTable.ContainsKey(stateId) && conditions.Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                     {
                         // Then this block state belongs to the current variant...
-                        manager.StateModelTable.Add(stateId, new(results, renderType, offsetType, particleTexture));
+                        manager.StateModelTable.Add(stateId, new(geometries, blockModelIds, renderType, offsetType, particleTexture));
                     }
                 }
             }
         }
 
-        private void LoadMultipartFormat(List<Json.JSONData> parts, ResourceLocation blockId, RenderType renderType, OffsetType offsetType, ResourcePackManager manager)
+        private static void LoadMultipartFormat(List<Json.JSONData> parts, ResourceLocation blockId, RenderType renderType, OffsetType offsetType, ResourcePackManager manager)
         {
-            var buildersList = new Dictionary<int, BlockGeometryBuilder>();
-            foreach (var stateId in BlockStatePalette.INSTANCE.GetAllNumIds(blockId))
-            {
-                buildersList.Add(stateId, new BlockGeometryBuilder());
-            }
+            var buildersList = BlockStatePalette.INSTANCE
+                .GetAllNumIds(blockId).ToDictionary(stateId => stateId, _ => new BlockGeometryBuilder());
 
             var particleTexture = ResourceLocation.INVALID;
+            var blockModelIds = new HashSet<ResourceLocation>();
 
             foreach (var part in parts)
             {
                 // Check part validity...
-                if (part.Properties.ContainsKey("apply"))
+                if (part.Properties.TryGetValue("apply", out var applyData))
                 {
                     // Prepare the part wrapper...
                     BlockModelWrapper partWrapper;
-                    if (part.Properties["apply"].Type == Json.JSONData.DataType.Array)
+                    if (applyData.Type == Json.JSONData.DataType.Array)
                     {
                         // Don't really support a list here, just use the first value instead...
-                        partWrapper = BlockModelWrapper.FromJson(manager, part.Properties["apply"].DataArray[0]);
+                        partWrapper = BlockModelWrapper.FromJson(manager, applyData.DataArray[0]);
                     }
                     else
                     {
-                        partWrapper = BlockModelWrapper.FromJson(manager, part.Properties["apply"]);
+                        partWrapper = BlockModelWrapper.FromJson(manager, applyData);
                     }
 
                     particleTexture = partWrapper.model.ResolveTextureName(PARTICLE_TEXTURE_NAME);
 
-                    if (part.Properties.ContainsKey("when"))
+                    if (part.Properties.TryGetValue("when", out var whenData))
                     {
-                        Json.JSONData whenData = part.Properties["when"];
-                        if (whenData.Properties.ContainsKey("OR"))
+                        if (whenData.Properties.TryGetValue("OR", out var orData))
                         {   // 'when.OR' contains multiple predicates...
                             foreach (var stateItem in buildersList) // For each state
                             {
@@ -119,7 +119,7 @@ namespace CraftSharp.Resource
                                 // Check and apply...
                                 bool apply = false;
                                 // An array of predicates in the value of 'OR'
-                                foreach (var conditionData in whenData.Properties["OR"].DataArray)
+                                foreach (var conditionData in orData.DataArray)
                                 {
                                     if (BlockStatePredicate.FromJson(conditionData).Check(BlockStatePalette.INSTANCE.GetByNumId(stateId)))
                                     {
@@ -148,13 +148,16 @@ namespace CraftSharp.Resource
                         foreach (var stateItem in buildersList) // For each state
                             buildersList[stateItem.Key].AppendWrapper(partWrapper);
                     }
+                    
+                    blockModelIds.Add(partWrapper.blockModelId);
                 }
             }
 
             // Get the table into manager...
             foreach (var resultItem in buildersList)
             {
-                manager.StateModelTable.Add(resultItem.Key, new(new BlockGeometry[]{ resultItem.Value.Build() }.ToList(), renderType, offsetType, particleTexture));
+                var geometries = new List<BlockGeometry> { resultItem.Value.Build() };
+                manager.StateModelTable.Add(resultItem.Key, new(geometries, blockModelIds, renderType, offsetType, particleTexture));
             }
         }
     }
