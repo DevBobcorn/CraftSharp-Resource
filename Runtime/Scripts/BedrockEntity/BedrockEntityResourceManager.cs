@@ -35,6 +35,14 @@ namespace CraftSharp.Resource.BedrockEntity
             {
                 ["normal"] = "textures/entity/chest/double_normal",
                 ["trapped"] = "textures/entity/chest/trapped_double"
+            },
+            ["banner"] = new()
+            {
+                ["banner_base"] = "textures/entity/banner/banner_base"
+            },
+            ["wall_banner"] = new()
+            {
+                ["banner_base"] = "textures/entity/banner/banner_base"
             }
         };
         
