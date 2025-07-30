@@ -36,7 +36,7 @@ namespace CraftSharp.Resource.BedrockEntity
             AnimationNames = animationNames;
         }
 
-        public static EntityRenderDefinition FromJson(string resourceRoot, Json.JSONData data)
+        public static EntityRenderDefinition FromJson(Json.JSONData data)
         {
             var defVersion = BedrockVersion.FromString(data.Properties["format_version"].StringValue);
 
@@ -58,7 +58,7 @@ namespace CraftSharp.Resource.BedrockEntity
             if (desc.Properties.TryGetValue("textures", out val))
             {
                 texturePaths = val.Properties.ToDictionary(x => $"{entityType.Path}/{x.Key}",
-                        x => $"{resourceRoot}{SP}{x.Value.StringValue}");
+                        x => x.Value.StringValue);
             }
             else
             {

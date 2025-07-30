@@ -43,6 +43,62 @@ namespace CraftSharp.Resource.BedrockEntity
             ["wall_banner"] = new()
             {
                 ["banner_base"] = "textures/entity/banner/banner_base"
+            },
+            ["sign"] = new()
+            {
+                ["acacia"] = "textures/entity/signs/acacia",
+                ["bamboo"] = "textures/entity/signs/bamboo",
+                ["birch"] = "textures/entity/signs/birch",
+                ["cherry"] = "textures/entity/signs/cherry",
+                ["crimson"] = "textures/entity/signs/crimson",
+                ["dark_oak"] = "textures/entity/signs/dark_oak",
+                ["jungle"] = "textures/entity/signs/jungle",
+                ["mangrove"] = "textures/entity/signs/mangrove",
+                ["oak"] = "textures/entity/signs/oak",
+                ["spruce"] = "textures/entity/signs/spruce",
+                ["warped"] = "textures/entity/signs/warped"
+            },
+            ["wall_sign"] = new()
+            {
+                ["acacia"] = "textures/entity/signs/acacia",
+                ["bamboo"] = "textures/entity/signs/bamboo",
+                ["birch"] = "textures/entity/signs/birch",
+                ["cherry"] = "textures/entity/signs/cherry",
+                ["crimson"] = "textures/entity/signs/crimson",
+                ["dark_oak"] = "textures/entity/signs/dark_oak",
+                ["jungle"] = "textures/entity/signs/jungle",
+                ["mangrove"] = "textures/entity/signs/mangrove",
+                ["oak"] = "textures/entity/signs/oak",
+                ["spruce"] = "textures/entity/signs/spruce",
+                ["warped"] = "textures/entity/signs/warped"
+            },
+            ["hanging_sign"] = new()
+            {
+                ["acacia"] = "textures/entity/signs/hanging/acacia",
+                ["bamboo"] = "textures/entity/signs/hanging/bamboo",
+                ["birch"] = "textures/entity/signs/hanging/birch",
+                ["cherry"] = "textures/entity/signs/hanging/cherry",
+                ["crimson"] = "textures/entity/signs/hanging/crimson",
+                ["dark_oak"] = "textures/entity/signs/hanging/dark_oak",
+                ["jungle"] = "textures/entity/signs/hanging/jungle",
+                ["mangrove"] = "textures/entity/signs/hanging/mangrove",
+                ["oak"] = "textures/entity/signs/hanging/oak",
+                ["spruce"] = "textures/entity/signs/hanging/spruce",
+                ["warped"] = "textures/entity/signs/hanging/warped"
+            },
+            ["wall_hanging_sign"] = new()
+            {
+                ["acacia"] = "textures/entity/signs/hanging/acacia",
+                ["bamboo"] = "textures/entity/signs/hanging/bamboo",
+                ["birch"] = "textures/entity/signs/hanging/birch",
+                ["cherry"] = "textures/entity/signs/hanging/cherry",
+                ["crimson"] = "textures/entity/signs/hanging/crimson",
+                ["dark_oak"] = "textures/entity/signs/hanging/dark_oak",
+                ["jungle"] = "textures/entity/signs/hanging/jungle",
+                ["mangrove"] = "textures/entity/signs/hanging/mangrove",
+                ["oak"] = "textures/entity/signs/hanging/oak",
+                ["spruce"] = "textures/entity/signs/hanging/spruce",
+                ["warped"] = "textures/entity/signs/hanging/warped"
             }
         };
         
@@ -59,14 +115,28 @@ namespace CraftSharp.Resource.BedrockEntity
             blockEntityModelsPath = PathHelper.GetPackDirectoryNamed("block_entity_models");
         }
 
-        private static string GetFullTexturePath(string pathWithoutExtension)
+        private string GetFullTexturePath(string pathWithoutExtension)
         {
-            // Image could be either tga or png
-            if (File.Exists($"{pathWithoutExtension}.png"))
+            // First check JE texture table
+            var jeResManager = ResourcePackManager.Instance;
+            ResourceLocation jeTextureId = new ResourceLocation(pathWithoutExtension.StartsWith("textures/") ? pathWithoutExtension[9..] : pathWithoutExtension);
+
+            if (jeTextureId.Path.StartsWith("items/")) jeTextureId = new ResourceLocation("item/" + jeTextureId.Path[6..]);
+            
+            Debug.Log($"Checking if JE texture {jeTextureId} is present");
+            
+            if (jeResManager.TextureFileTable.TryGetValue(jeTextureId, out var fullPathInJEResource))
             {
-                return $"{pathWithoutExtension}.png";
+                Debug.Log($"Using JE texture {jeTextureId} for BE model");
+                return fullPathInJEResource;
             }
-            return File.Exists($"{pathWithoutExtension}.tga") ? $"{pathWithoutExtension}.tga" : pathWithoutExtension;
+            
+            // BE texture could be either tga or png
+            if (File.Exists($"{resourcePath}{SP}{pathWithoutExtension}.png"))
+            {
+                return $"{resourcePath}{SP}{pathWithoutExtension}.png";
+            }
+            return File.Exists($"{resourcePath}{SP}{pathWithoutExtension}.tga") ? $"{resourcePath}{SP}{pathWithoutExtension}.tga" : $"{resourcePath}{SP}{pathWithoutExtension}";
         }
         
         private static bool CheckShouldReplaceEntry(BedrockVersion prevVer, BedrockVersion newVer)
@@ -85,7 +155,7 @@ namespace CraftSharp.Resource.BedrockEntity
             return newVer > prevVer;
         }
 
-        private void LoadExtraEntityModelFolder(string baseResourcePath, string extraModelsPath, string geometryNamePrefix)
+        private void LoadExtraEntityModelFolder(string extraModelsPath, string geometryNamePrefix)
         {
             var extraModelFolderDir = new DirectoryInfo(extraModelsPath);
             if (!extraModelFolderDir.Exists)
@@ -130,7 +200,7 @@ namespace CraftSharp.Resource.BedrockEntity
                     if (ExtraEntityModelTextures.TryGetValue(extraModelFolder.Name, out var textureList))
                     {
                         texturePaths = textureList.ToDictionary(x => $"{extraModelFolder.Name}/{x.Key}",
-                            x => $"{baseResourcePath}{SP}{x.Value}");
+                            x => x.Value);
                     }
                     else
                     {
@@ -159,7 +229,7 @@ namespace CraftSharp.Resource.BedrockEntity
                 return texture;
             }
             
-            if (!TextureFileTable.TryGetValue(textureName, out var texturePathWithoutExtension)) // Texture path not registered
+            if (!TextureFileTable.TryGetValue(textureName, out var localTexturePath)) // Texture path not registered
             {
                 CachedTextures[textureName] = ResourcePackManager.GetMissingEntityTexture(
                     geometryTextureWidth <= 0 ? 32 : geometryTextureWidth, geometryTextureHeight <= 0 ? 32 : geometryTextureHeight);
@@ -167,7 +237,10 @@ namespace CraftSharp.Resource.BedrockEntity
                 return CachedTextures[textureName];
             }
 
-            var fileName = GetFullTexturePath(texturePathWithoutExtension);
+            var fileName = GetFullTexturePath(localTexturePath);
+            
+            Debug.Log($"Expand local texture path {localTexturePath} to full path {fileName}");
+            
             // Load texture from file
             var imageBytes = File.ReadAllBytes(fileName);
             if (fileName.EndsWith(".tga")) // Read as tga image
@@ -187,7 +260,7 @@ namespace CraftSharp.Resource.BedrockEntity
             {
                 if (geometryTextureWidth != 0 && geometryTextureHeight != 0) // The sizes doesn't match, use specified texture size
                 {
-                    Debug.LogWarning($"Specified texture size({geometryTextureWidth}x{geometryTextureHeight}) doesn't match image file {texturePathWithoutExtension} ({texture.width}x{texture.height})! Resizing...");
+                    Debug.LogWarning($"Specified texture size({geometryTextureWidth}x{geometryTextureHeight}) doesn't match image file {fileName} ({texture.width}x{texture.height})! Resizing...");
 
                     var textureWithRightSize = new Texture2D(geometryTextureWidth, geometryTextureHeight)
                     {
@@ -253,8 +326,8 @@ namespace CraftSharp.Resource.BedrockEntity
                 }
             }
 
-            LoadExtraEntityModelFolder(resourcePath, playerModelsPath, "player");
-            LoadExtraEntityModelFolder(resourcePath, blockEntityModelsPath, "block_entity");
+            LoadExtraEntityModelFolder(playerModelsPath, "player");
+            LoadExtraEntityModelFolder(blockEntityModelsPath, "block_entity");
             
             yield return null;
 
@@ -270,7 +343,7 @@ namespace CraftSharp.Resource.BedrockEntity
             {
                 var data = Json.ParseJson(File.ReadAllText(defFile.FullName));
 
-                var entityDef = EntityRenderDefinition.FromJson(resourcePath, data);
+                var entityDef = EntityRenderDefinition.FromJson(data);
                 var entityType = entityDef.EntityType;
 
                 if (EntityRenderDefinitions.TryAdd(entityType, entityDef)) // Check version
