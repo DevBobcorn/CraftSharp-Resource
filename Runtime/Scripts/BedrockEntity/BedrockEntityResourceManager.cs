@@ -29,12 +29,20 @@ namespace CraftSharp.Resource.BedrockEntity
             {
                 ["normal"] = "textures/entity/chest/normal",
                 ["trapped"] = "textures/entity/chest/trapped",
-                ["ender"] = "textures/entity/chest/ender"
+                ["ender"] = "textures/entity/chest/ender",
+                ["christmas"] = "textures/entity/chest/christmas"
             },
-            ["large_chest"] = new()
+            ["chest_left"] = new()
             {
-                ["normal"] = "textures/entity/chest/double_normal",
-                ["trapped"] = "textures/entity/chest/trapped_double"
+                ["normal"] = "textures/entity/chest/normal_left",
+                ["trapped"] = "textures/entity/chest/trapped_left",
+                ["christmas"] = "textures/entity/chest/christmas_left"
+            },
+            ["chest_right"] = new()
+            {
+                ["normal"] = "textures/entity/chest/normal_right",
+                ["trapped"] = "textures/entity/chest/trapped_right",
+                ["christmas"] = "textures/entity/chest/christmas_right"
             },
             ["banner"] = new()
             {
