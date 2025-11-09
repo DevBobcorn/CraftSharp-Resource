@@ -227,7 +227,7 @@ namespace CraftSharp.Resource
             Loaded = true;
         }
 
-        public void BuildStateGeometries(Action<int, int> progressUpdate)
+        private void BuildStateGeometries(Action<int, int> progressUpdate)
         {
             var groupIds = BlockStatePalette.INSTANCE.GetAllGroupIds();
             int i = 0;
@@ -254,7 +254,7 @@ namespace CraftSharp.Resource
             }
         }
 
-        public void BuildItemGeometries(Action<int, int> progressUpdate)
+        private void BuildItemGeometries(Action<int, int> progressUpdate)
         {
             var numIds = ItemPalette.INSTANCE.GetAllNumIds();
             int i = 0;
@@ -348,6 +348,132 @@ namespace CraftSharp.Resource
             }
         }
 
+        /// <summary>
+        /// Build atlas and geometries for injected block states.
+        /// <br/>
+        /// This should be used for debugging purposes only, where actual block data is not present.
+        /// <br/>
+        /// Should be called from Unity thread.
+        /// </summary>
+        public void BuildAtlasAndGeometriesForInjectedBlockStates()
+        {
+            if (Loaded)
+            {
+                throw new InvalidOperationException("Dummy geometries cannot be built when actual data is loaded!");
+            }
+            
+            StateModelTable.Clear();
+
+            var palette = BlockStatePalette.INSTANCE;
+            
+            var elementObj = new Dictionary<string, object>
+            {
+                ["from"] = new[]{ 0, 0, 0 },
+                ["to"] = new[]{ 16, 16, 16 },
+                ["faces"] = new Dictionary<string, object>
+                {
+                    ["down"] = new Dictionary<string, object>
+                    {
+                        ["texture"] = "#all",
+                        ["cullface"] = "down",
+                    },
+                    ["up"] = new Dictionary<string, object>
+                    {
+                        ["texture"] = "#all",
+                        ["cullface"] = "up",
+                    },
+                    ["south"] = new Dictionary<string, object>
+                    {
+                        ["texture"] = "#all",
+                        ["cullface"] = "south",
+                    },
+                    ["north"] = new Dictionary<string, object>
+                    {
+                        ["texture"] = "#all",
+                        ["cullface"] = "north",
+                    },
+                    ["west"] = new Dictionary<string, object>
+                    {
+                        ["texture"] = "#all",
+                        ["cullface"] = "west",
+                    },
+                    ["east"] = new Dictionary<string, object>
+                    {
+                        ["texture"] = "#all",
+                        ["cullface"] = "east",
+                    }
+                }
+            };
+            var elementJsonData = Json.Object2JSONData(elementObj);
+            var blockModels = new Dictionary<int, JsonModel>();
+            var textureIdSet = new List<ResourceLocation>();
+            
+            // Create models for each injected block
+            foreach (var stateId in palette.GetAllNumIds())
+            {
+                var state = palette.GetByNumId(stateId);
+                
+                if (state.NoSolidMesh) continue;
+                
+                var blockModel = new JsonModel();
+                // Set texture path for each model
+                var textureId = new ResourceLocation(state.BlockId.Namespace, "block/" + state.BlockId.Path);
+                blockModel.Textures["all"] = new TextureReference(false, textureId.ToString());
+                blockModel.Textures["particle"] = new TextureReference(false, textureId.ToString());
+                
+                textureIdSet.Add(textureId);
+                blockModel.Elements.Add(JsonModelElement.FromJson(elementJsonData));
+                
+                blockModels.Add(stateId, blockModel);
+            }
+            
+            // Generate texture atlas for textures used by these model
+            var totalCount = 3 + blockModels.Count;
+            var atlasGenerationFlag = new DataLoadFlag();
+            var textureInfos = new (Texture2D, TextureAnimationInfo?)[totalCount];
+            var ids = new ResourceLocation[totalCount];
+
+            var count = 0;
+            
+            // Blank texture
+            ids[count] = BLANK_TEXTURE;
+            textureInfos[count] = (GetBlankTexture(), null);
+            count++;
+
+            // Empty texture
+            ids[count] = EMPTY_TEXTURE;
+            textureInfos[count] = (GetEmptyTexture(), null);
+            count++;
+
+            // Missing texture
+            ids[count] = ResourceLocation.INVALID;
+            textureInfos[count] = (GetMissingTexture(), null);
+            count++;
+
+            foreach (var textureId in textureIdSet) // Create texture files...
+            {
+                ids[count] = textureId;
+                Color32 solidColor = Color.HSVToRGB((count - 3) % 8 / 8F, 0.5F, 1);
+                textureInfos[count++] = (GetSolidTexture(solidColor), null);
+            }
+            
+            // Call GenerateAtlas_Internal directly as an IEnumerator instead of using it as a coroutine
+            var it = GenerateAtlas_Internal(atlasGenerationFlag, textureInfos, ids);
+            while (it.MoveNext());
+
+            // Build geometries from block models, and store them in state model table
+            foreach (var stateId in blockModels.Keys)
+            {
+                var state = palette.GetByNumId(stateId);
+                
+                var wrapper = new BlockModelWrapper(blockModels[stateId], int2.zero, false, state.BlockId);
+                var geometry = new BlockGeometryBuilder(wrapper).Build();
+
+                StateModelTable[stateId] = new BlockStateModel(new List<BlockGeometry> { geometry },
+                    RenderType.SOLID, OffsetType.NONE, ResourceLocation.INVALID);
+            }
+        }
+        
         public Texture2D GetParticleAtlas()
         {
             return particleAtlas!;
@@ -465,7 +591,7 @@ namespace CraftSharp.Resource
             var info = GetTextureInfo(identifier);
             if (info.frameCount > 1) // This texture is animated
             {
-                float oneX = info.bounds.width / info.framePerRow; // Frame size on texture atlas array
+                var oneX = info.bounds.width / info.framePerRow; // Frame size on texture atlas array
 
                 return (GetUVsAt(info.bounds, info.index, oneX, oneX, part, areaRot),
                         new(info.frameCount, info.frameInterval, oneX, info.framePerRow));
@@ -473,13 +599,13 @@ namespace CraftSharp.Resource
             return (GetUVsAt(info.bounds, info.index, info.bounds.width, info.bounds.height, part, areaRot), float4.zero);
         }
 
-        private float3[] GetUVsAt(Rect bounds, int index, float oneU, float oneV, Vector4 part, int areaRot)
+        private static float3[] GetUVsAt(Rect bounds, int index, float oneU, float oneV, Vector4 part, int areaRot)
         {
             // Get texture offset in atlas
             float3 o = new(bounds.xMin, bounds.yMax - oneV, index + 0.1F);
 
-            // vect:  x,  y,  z,  w
-            // vect: x1, y1, x2, y2
+            // vector:  x,  y,  z,  w
+            // vector: x1, y1, x2, y2
             float u1 = part.x * oneU, v1 = part.y * oneV;
             float u2 = part.z * oneU, v2 = part.w * oneV;
 
@@ -609,10 +735,14 @@ namespace CraftSharp.Resource
 
         private static Texture2D GetEmptyTexture()
         {
+            return GetSolidTexture(new Color32(0, 0, 0, 0));
+        }
+        
+        private static Texture2D GetSolidTexture(Color32 color)
+        {
             Texture2D tex = new(16, 16);
-            Color32 empty = new(0, 0, 0, 0);
 
-            var colors = Enumerable.Repeat(empty, 16 * 16).ToArray();
+            var colors = Enumerable.Repeat(color, 16 * 16).ToArray();
             tex.SetPixels32(colors);
             // No need to update mipmap because it'll be
             // stitched into the atlas later
@@ -684,9 +814,6 @@ namespace CraftSharp.Resource
 
         private IEnumerator GenerateAtlas(DataLoadFlag atlasGenFlag)
         {
-            texAtlasTable.Clear(); // Clear previously loaded table...
-
-            var texDict = TextureFileTable;
             var textureIdSet = new HashSet<ResourceLocation>();
 
             // Collect referenced textures
@@ -708,7 +835,7 @@ namespace CraftSharp.Resource
                             {
                                 var texId = ResourceLocation.FromString(texItem.Value.StringValue);
 
-                                if (texDict.ContainsKey(texId))
+                                if (TextureFileTable.ContainsKey(texId))
                                     textureIdSet.Add(texId);
                                 //else
                                 //    Debug.LogWarning($"Texture {texId} not found in dictionary! (Referenced in {modelFile})");
@@ -723,7 +850,7 @@ namespace CraftSharp.Resource
             // Append liquid textures, which are not referenced in model files, but will be used by fluid mesh
             foreach (var texId in FluidGeometry.LiquidTextures)
             {
-                if (texDict.ContainsKey(texId))
+                if (TextureFileTable.ContainsKey(texId))
                 {
                     textureIdSet.Add(texId);
                 }
@@ -734,7 +861,7 @@ namespace CraftSharp.Resource
             var textureInfos = new (Texture2D, TextureAnimationInfo?)[totalCount];
             var ids = new ResourceLocation[totalCount];
 
-            int count = 0;
+            var count = 0;
 
             // Blank texture
             ids[count] = BLANK_TEXTURE;
@@ -753,18 +880,26 @@ namespace CraftSharp.Resource
 
             foreach (var textureId in textureIdSet) // Load texture files...
             {
-                var texFilePath = texDict[textureId];
+                var texFilePath = TextureFileTable[textureId];
                 ids[count] = textureId;
                 textureInfos[count++] = LoadSingleTexture(texFilePath);
 
                 if (count % 5 == 0) yield return null;
             }
             
+            yield return GenerateAtlas_Internal(atlasGenFlag, textureInfos, ids);
+        }
+        
+        private IEnumerator GenerateAtlas_Internal(DataLoadFlag atlasGenFlag, (Texture2D, TextureAnimationInfo?)[] textureInfos, ResourceLocation[] ids)
+        {
+            texAtlasTable.Clear(); // Clear previously loaded table...
+            
             int curTexIndex = 0, curAtlasIndex = 0;
+            var totalCount = textureInfos.Length;
             List<Texture2D> atlases = new();
 
-            int totalVolume = ATLAS_SIZE * ATLAS_SIZE;
-            int maxContentVolume = (int)(totalVolume * 0.97F);
+            const int totalVolume = ATLAS_SIZE * ATLAS_SIZE;
+            var maxContentVolume = (int)(totalVolume * 0.97F);
 
             do
             {
@@ -773,7 +908,7 @@ namespace CraftSharp.Resource
 
                 while (lastTexIndex < totalCount - 1)
                 {
-                    (var nextTex, _) = textureInfos[lastTexIndex + 1];
+                    var (nextTex, _) = textureInfos[lastTexIndex + 1];
                     curVolume += nextTex.width * nextTex.height;
 
                     if (curVolume < maxContentVolume)
@@ -931,7 +1066,7 @@ namespace CraftSharp.Resource
             atlasArrays[1] = atlasArray1;
 
             // Read biome colormaps from resource pack
-            if (texDict.TryGetValue(FOLIAGE_COLORMAP, out var path))
+            if (TextureFileTable.TryGetValue(FOLIAGE_COLORMAP, out var path))
             {
                 //Debug.Log($"Loading foliage colormap from {texDict[FOLIAGE_COLORMAP]}");
                 var mapTex = new Texture2D(2, 2);
@@ -944,7 +1079,7 @@ namespace CraftSharp.Resource
                 World.FoliageColormapPixels = mapTex.GetPixels32();
             }
             
-            if (texDict.TryGetValue(GRASS_COLORMAP, out path))
+            if (TextureFileTable.TryGetValue(GRASS_COLORMAP, out path))
             {
                 //Debug.Log($"Loading grass colormap from {texDict[GRASS_COLORMAP]}");
                 var mapTex = new Texture2D(2, 2);
@@ -958,7 +1093,7 @@ namespace CraftSharp.Resource
                 World.GrassColormapPixels = mapTex.GetPixels32();
             }
 
-            if (texDict.TryGetValue(DESTROY_TEXTURES[0], out var texPath))
+            if (TextureFileTable.TryGetValue(DESTROY_TEXTURES[0], out var texPath))
             {
                 var texture = new Texture2D(2, 2);
                 texture.LoadImage(File.ReadAllBytes(texPath));
@@ -973,7 +1108,7 @@ namespace CraftSharp.Resource
 
                 for (int i = 1; i < DESTROY_TEXTURES.Length; i++)
                 {
-                    if (texDict.TryGetValue(DESTROY_TEXTURES[i], out texPath))
+                    if (TextureFileTable.TryGetValue(DESTROY_TEXTURES[i], out texPath))
                     {
                         texture.LoadImage(File.ReadAllBytes(texPath));
                         textureArray.SetPixels32(texture.GetPixels32(), i, 0);
