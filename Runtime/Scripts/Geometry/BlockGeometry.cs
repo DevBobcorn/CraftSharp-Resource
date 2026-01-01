@@ -82,7 +82,7 @@ namespace CraftSharp.Resource
             );
         }
 
-        private float GetCornerAO(bool side1, bool corner, bool side2, float intensity)
+        private static float GetCornerAO(bool side1, bool corner, bool side2, float intensity)
         {
             return 1F - (side1 ? intensity : 0F) - (corner ? intensity : 0F) - (side2 ? intensity : 0F);
         }
@@ -106,13 +106,8 @@ namespace CraftSharp.Resource
         /// <summary>
         /// Get 4 corner AO values for a face
         /// </summary>
-        public float[] GetDirCornersAO(CullDir dir, int castAOMask, float intensity)
+        private float[] GetDirCornersAO(CullDir dir, int castAOMask, float intensity)
         {
-            bool castAO(int index)
-            {
-                return (castAOMask & (1 << index)) != 0;
-            }
-
             return dir switch
             {
                 CullDir.DOWN      =>
@@ -148,18 +143,18 @@ namespace CraftSharp.Resource
 
                 _                 => NO_AO
             };
+
+            bool castAO(int index)
+            {
+                return (castAOMask & (1 << index)) != 0;
+            }
         }
 
         /// <summary>
         /// Get 4 corner AO values for a face which is inside the block
         /// </summary>
-        public float[] GetDirCornersInBlockAO(CullDir dir, int castAOMask, float intensity)
+        private float[] GetDirCornersInBlockAO(CullDir dir, int castAOMask, float intensity)
         {
-            bool castAO(int index)
-            {
-                return (castAOMask & (1 << index)) != 0;
-            }
-
             return dir switch
             {
                 CullDir.UP        =>
@@ -195,13 +190,18 @@ namespace CraftSharp.Resource
 
                 _                 => NO_AO
             };
+
+            bool castAO(int index)
+            {
+                return (castAOMask & (1 << index)) != 0;
+            }
         }
 
-        public float SampleVertexAO(CullDir dir, float[] cornersAO, float3 vertPosInBlock, float vertLight)
+        private static float SampleVertexAO(CullDir dir, float[] cornersAO, float3 vertPosInBlock, float vertLight)
         {
             // AO Coord: 0 1
             //           2 3
-            float2 AOCoord = dir switch
+            var AOCoord = dir switch
             {
                 CullDir.DOWN   => vertPosInBlock.zx,
                 CullDir.UP     => vertPosInBlock.xz,
@@ -220,9 +220,9 @@ namespace CraftSharp.Resource
             return math.lerp(ao, 1F, vertLight / 15F);
         }
 
-        private int GetVertexNormalIndex_Block(float3 vertPosInBlock, int castAOMask)
+        private static int GetVertexNormalIndex_Block(float3 vertPosInBlock, int castAOMask)
         {
-            int index = 0;
+            var index = 0;
 
             if (      ((castAOMask & (1 << 16)) == 0) && vertPosInBlock.x > 0.6F) // [16] South is empty
             {
@@ -254,13 +254,13 @@ namespace CraftSharp.Resource
             return index;
         }
 
-        private float PackExtraVertData(float light, int vertNormalIndex)
+        private static float PackExtraVertData(float light, int vertNormalIndex)
         {
             // A float number can store an integer with a value of up to 16777216 (2^24)
             // without losing precision(See https://stackoverflow.com/a/3793950)
 
             // light: [0F, 15F] => [0, 255] (8-bit uint)
-            int low = math.clamp(Mathf.RoundToInt(light * 17F), 0, 255);
+            var low = math.clamp(Mathf.RoundToInt(light * 17F), 0, 255);
 
             // vert normal index: (6-bit uint)
             // x: 2-bit, y: 2-bit, z: 2-bit
@@ -342,7 +342,8 @@ namespace CraftSharp.Resource
                         case VertexDataFormat.Color_Light_CrossNormal:
                             float3 vertColor2 = RGB2Linear(tintIndexArrs[CullDir.NONE][i] >= 0 ? blockColor : DEFAULT_COLOR)
                                 * (aoIntensity > 0F ? SampleVertexAO(faceDir, dir2ao[faceDir], vertPosInBlock, vertLight) : 1F);
-                            float packedVal2 = PackExtraVertData(vertLight, 0x3F);
+                            int vertNormal2 = GetVertexNormalIndex_Block(vertPosInBlock, castAOMask);
+                            float packedVal2 = PackExtraVertData(vertLight, vertNormal2);
                             tints[i + vertOffset] = new float4(vertColor2, packedVal2);
                             break;
                         case VertexDataFormat.Color_Light:

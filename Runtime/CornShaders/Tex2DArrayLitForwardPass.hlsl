@@ -9,7 +9,7 @@
 struct Attributes
 {
     float4 positionOS    : POSITION;
-    float4 color         : COLOR;
+    float4 color         : COLOR0;
     float3 normalOS      : NORMAL;
     float4 tangentOS     : TANGENT;
     float3 texcoord      : TEXCOORD0;
@@ -23,7 +23,7 @@ struct Attributes
 struct Varyings
 {
     float3 uv                          : TEXCOORD0;
-    float4 color                       : COLOR;
+    float4 color                       : COLOR0;
 
     float3 positionWS                  : TEXCOORD1;    // xyz: posWS
 
