@@ -19,6 +19,8 @@ namespace CraftSharp.Resource
         public static readonly ResourceLocation FOLIAGE_COLORMAP = new("colormap/foliage");
         public static readonly ResourceLocation GRASS_COLORMAP = new("colormap/grass");
 
+        private static Texture2D? blankTextureInstance;
+
         public static readonly ResourceLocation[] DESTROY_TEXTURES = new ResourceLocation[]
         {
             new("block/destroy_stage_0"), new("block/destroy_stage_1"), new("block/destroy_stage_2"),
@@ -1162,6 +1164,17 @@ namespace CraftSharp.Resource
         /// <param name="defHeight">Texture height</param>
         public Texture2D GetEntityTextureFromTable(ResourceLocation texId, int defWidth = 32, int defHeight = 32)
         {
+            if (texId == BLANK_TEXTURE)
+            {
+                if (blankTextureInstance)
+                {
+                    return blankTextureInstance;
+                }
+
+                blankTextureInstance = GetBlankTexture();
+                return blankTextureInstance;
+            }
+            
             if (EntityTexture2DTable.TryGetValue(texId, out var tex))
             {
                 return tex;
