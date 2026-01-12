@@ -26,7 +26,7 @@ namespace CraftSharp.Resource
             return vertexArr.Length;
         }
 
-        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, float3[] itemTints)
+        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int[] itemTintInts)
         {
             var verts = buffer.vert;
             var txuvs = buffer.txuv;
@@ -40,8 +40,15 @@ namespace CraftSharp.Resource
                 for (i = 0U;i < vertexArr.Length;i++)
                 {
                     verts[i + vertOffset] = vertexArr[i] + posOffset;
-                    tints[i + vertOffset] = tintIndexArr[i] >= 0 && tintIndexArr[i] < itemTints.Length ?
-                            new(itemTints[tintIndexArr[i]], 1F) : new(BlockGeometry.DEFAULT_COLOR, 1F);
+                    if (tintIndexArr[i] >= 0 && tintIndexArr[i] < itemTintInts.Length)
+                    {
+                        var tint = ColorConvert.GetFloat3(itemTintInts[tintIndexArr[i]]);
+                        tints[i + vertOffset] = new(tint, 1F);
+                    }
+                    else
+                    {
+                        tints[i + vertOffset] = new(BlockGeometry.DEFAULT_COLOR, 1F);
+                    }
                 }
                 uvArr.CopyTo(txuvs, vertOffset);
                 uvAnimArr.CopyTo(uvans, vertOffset);

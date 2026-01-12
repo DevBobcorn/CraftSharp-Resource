@@ -13,9 +13,10 @@ namespace CraftSharp.Resource
             return VertexCountMap[cullFlags];
         }
 
-        public static void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation tex, int cullFlags, float3 cubeColor)
+        public static void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation tex, int cullFlags, int cubeColorInt)
         {
             var startOffset = vertOffset;
+            var cubeColor = ColorConvert.GetFloat3(cubeColorInt);
 
             // Unity                   Minecraft            Top Quad Vertices
             //  A +Z (East)             A +X (East)          v0---v1

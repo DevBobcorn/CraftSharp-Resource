@@ -306,12 +306,15 @@ namespace CraftSharp.Resource
         /// <summary>
         /// Build block vertices into the given vertex buffer. Returns vertex offset after building.
         /// </summary>
-        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, VertexDataFormat datFormat = VertexDataFormat.Color_Light)
+        public void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, int blockColorInt, VertexDataFormat datFormat = VertexDataFormat.Color_Light)
         {
             var verts = buffer.vert;
             var txuvs = buffer.txuv;
             var uvans = buffer.uvan;
             var tints = buffer.tint;
+
+            // Resolve integer color to float3 once
+            var blockColor = ColorConvert.GetFloat3(blockColorInt);
 
             uint i;
 
@@ -409,11 +412,11 @@ namespace CraftSharp.Resource
         }
 
         public void BuildWithCollider(VertexBuffer buffer, ref uint vertOffset, float3[] cVerts, ref uint cVertOffset, float3 posOffset,
-                int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, float3 blockColor, VertexDataFormat datFormat = VertexDataFormat.Color_Light)
+                int cullFlags, int castAOMask, float aoIntensity, float[] blockLights, int blockColorInt, VertexDataFormat datFormat = VertexDataFormat.Color_Light)
         {
             var startOffset = vertOffset;
 
-            Build(buffer, ref vertOffset, posOffset, cullFlags, castAOMask, aoIntensity, blockLights, blockColor, datFormat);
+            Build(buffer, ref vertOffset, posOffset, cullFlags, castAOMask, aoIntensity, blockLights, blockColorInt, datFormat);
 
             var newVertexCount = vertOffset - startOffset;
 

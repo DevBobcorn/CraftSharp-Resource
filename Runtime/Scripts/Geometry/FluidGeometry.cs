@@ -36,9 +36,10 @@ namespace CraftSharp.Resource
         }
 
         public static void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation liquid,
-                byte[] heights, int cullFlags, float[] blockLights, float3 fluidColor)
+                byte[] heights, int cullFlags, float[] blockLights, int fluidColorInt)
         {
             var startOffset = vertOffset;
+            var fluidColor = ColorConvert.GetFloat3(fluidColorInt);
             
             // Unity                   Minecraft            Top Quad Vertices     Height References
             //  A +Z (East)             A +X (East)          v0---v1               NE---SE
