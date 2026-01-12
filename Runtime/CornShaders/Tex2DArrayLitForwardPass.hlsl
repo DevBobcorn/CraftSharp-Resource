@@ -62,23 +62,15 @@ struct Varyings
 //                  Vertex and Fragment functions                            //
 ///////////////////////////////////////////////////////////////////////////////
 #include "GetTexUVOffset.cginc"
+#include "UnpackVertexLight.cginc"
 
 //Fragment stage. Note: Screen position passed here is not normalized (divided by w-component)
 void ApplyFog(inout float3 color, float fogFactor, float4 positionCS, float3 positionWS) 
 {
 	float3 foggedColor = color;
 	
-    #if !defined(_DISABLE_FOG_AND_GI) && !defined(_ENVIRO3_FOG)
+    #if !defined(_DISABLE_FOG_AND_GI)
         foggedColor = MixFog(color.rgb, fogFactor);
-    #endif
-
-    #ifdef _SURFACE_TYPE_TRANSPARENT
-    #if !defined(_DISABLE_FOG_AND_GI) && defined(_ENVIRO3_FOG)
-        if(any(_EnviroFogParameters) > 0)
-        {
-            foggedColor.rgb = ApplyFogAndVolumetricLights(color.rgb, positionCS, positionWS, 0);
-        }
-        #endif
     #endif
 	
 	color.rgb = foggedColor.rgb;
@@ -129,7 +121,7 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
     #endif
 
     // Mix with block light
-    inputData.bakedGI = max(pow(abs(input.color.w * 0.1F), 1.5F), inputData.bakedGI);
+    inputData.bakedGI = max(input.extraVertData.x * 0.1F, inputData.bakedGI);
 
     inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
     inputData.shadowMask = SAMPLE_SHADOWMASK(input.staticLightmapUV);
@@ -198,6 +190,13 @@ Varyings LitPassVertexSimple(Attributes input)
     #if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
         output.shadowCoord = GetShadowCoord(vertexInput);
     #endif
+
+    // Unpack packed light data
+    float vertBlockLight;
+    float vertSkyLight;
+    Unpack_float(input.color.w, vertBlockLight, vertSkyLight);
+
+    output.extraVertData = float2(vertBlockLight, vertSkyLight);
 
     return output;
 }

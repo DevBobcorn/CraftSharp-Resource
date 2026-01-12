@@ -36,7 +36,7 @@ namespace CraftSharp.Resource
         }
 
         public static void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation liquid,
-                byte[] heights, int cullFlags, float[] blockLights, int fluidColorInt)
+                byte[] heights, int cullFlags, byte[] blockLights, int fluidColorInt)
         {
             var startOffset = vertOffset;
             var fluidColor = ColorConvert.GetFloat3(fluidColorInt);
@@ -131,8 +131,12 @@ namespace CraftSharp.Resource
 
             for (uint i = startOffset; i < vertOffset; i++) // For each new vertex in the mesh
             {
+                var vertBlockLight = BlockGeometry.GetVertexLightFromCornerLights(verts[i], blockLights);
+                var vertSkyLight = (byte) 0;
+                var packedVal = BlockGeometry.PackVertexColorAlphaData(vertBlockLight, vertSkyLight, 0);
+
                 // Calculate vertex lighting
-                tints[i] = new float4(fluidColor, BlockGeometry.GetVertexLightFromCornerLights(verts[i], blockLights));
+                tints[i] = new float4(fluidColor, packedVal);
                 // Offset vertices
                 verts[i] = verts[i] + posOffset;
             }
