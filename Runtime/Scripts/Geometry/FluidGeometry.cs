@@ -17,8 +17,8 @@ namespace CraftSharp.Resource
         private static readonly Vector4 FULL = new(0, 0, 1, 1);
 
         // Add a subtle offset to sides of water to avoid z-fighting
-        private const float O = 0.001F;
-        private const float I = 0.999F;
+        private const float O = 0F;
+        private const float I = 1F;
 
         public static int GetVertexCount(int cullFlags)
         {
@@ -133,17 +133,22 @@ namespace CraftSharp.Resource
             }
         }
 
-        public static void BuildCollider(float3[] verts, ref uint vertOffset, float3 posOffset, int cullFlags)
+        public static void BuildCollider(float3[] verts, ref uint vertOffset, float3 posOffset, ReadOnlySpan<float> cornerHeights, int cullFlags)
         {
-            float h = (cullFlags & (1 << 0)) != 0 ? 0.875F : I;
             var startOffset = vertOffset;
+            var full = (cullFlags & (1 << 0)) == 0;
+
+            var hne = full ? 1F : math.clamp(cornerHeights[0], 0F, 1F);
+            var hse = full ? 1F : math.clamp(cornerHeights[1], 0F, 1F);
+            var hnw = full ? 1F : math.clamp(cornerHeights[2], 0F, 1F);
+            var hsw = full ? 1F : math.clamp(cornerHeights[3], 0F, 1F);
 
             if ((cullFlags & (1 << 0)) != 0) // Up
             {
-                verts[vertOffset]     = new(0, h, 1); // 4 => 2
-                verts[vertOffset + 1] = new(1, h, 1); // 5 => 3
-                verts[vertOffset + 2] = new(0, h, 0); // 3 => 1
-                verts[vertOffset + 3] = new(1, h, 0); // 2 => 0
+                verts[vertOffset]     = new(0, hne, 1); // 4 => 2
+                verts[vertOffset + 1] = new(1, hse, 1); // 5 => 3
+                verts[vertOffset + 2] = new(0, hnw, 0); // 3 => 1
+                verts[vertOffset + 3] = new(1, hsw, 0); // 2 => 0
                 vertOffset += 4;
             }
 
@@ -158,37 +163,37 @@ namespace CraftSharp.Resource
 
             if ((cullFlags & (1 << 2)) != 0) // South
             {
-                verts[vertOffset]     = new(I, h, O); // 2 => 1
-                verts[vertOffset + 1] = new(I, h, I); // 5 => 2
-                verts[vertOffset + 2] = new(I, 0, O); // 1 => 0
-                verts[vertOffset + 3] = new(I, 0, I); // 6 => 3
+                verts[vertOffset]     = new(I, hsw, O); // 2 => 1
+                verts[vertOffset + 1] = new(I, hse, I); // 5 => 2
+                verts[vertOffset + 2] = new(I,   0, O); // 1 => 0
+                verts[vertOffset + 3] = new(I,   0, I); // 6 => 3
                 vertOffset += 4;
             }
 
             if ((cullFlags & (1 << 3)) != 0) // North
             {
-                verts[vertOffset]     = new(O, h, I); // 4 => 2
-                verts[vertOffset + 1] = new(O, h, O); // 3 => 1
-                verts[vertOffset + 2] = new(O, 0, I); // 7 => 3
-                verts[vertOffset + 3] = new(O, 0, O); // 0 => 0
+                verts[vertOffset]     = new(O, hne, I); // 4 => 2
+                verts[vertOffset + 1] = new(O, hnw, O); // 3 => 1
+                verts[vertOffset + 2] = new(O,   0, I); // 7 => 3
+                verts[vertOffset + 3] = new(O,   0, O); // 0 => 0
                 vertOffset += 4;
             }
 
             if ((cullFlags & (1 << 4)) != 0) // East
             {
-                verts[vertOffset]     = new(I, h, I); // 5 => 1
-                verts[vertOffset + 1] = new(O, h, I); // 4 => 0
-                verts[vertOffset + 2] = new(I, 0, I); // 6 => 2
-                verts[vertOffset + 3] = new(O, 0, I); // 7 => 3
+                verts[vertOffset]     = new(I, hse, I); // 5 => 1
+                verts[vertOffset + 1] = new(O, hne, I); // 4 => 0
+                verts[vertOffset + 2] = new(I,   0, I); // 6 => 2
+                verts[vertOffset + 3] = new(O,   0, I); // 7 => 3
                 vertOffset += 4;
             }
 
             if ((cullFlags & (1 << 5)) != 0) // West
             {
-                verts[vertOffset]     = new(O, h, O); // 3 => 3
-                verts[vertOffset + 1] = new(I, h, O); // 2 => 2
-                verts[vertOffset + 2] = new(O, 0, O); // 0 => 0
-                verts[vertOffset + 3] = new(I, 0, O); // 1 => 1
+                verts[vertOffset]     = new(O, hnw, O); // 3 => 3
+                verts[vertOffset + 1] = new(I, hsw, O); // 2 => 2
+                verts[vertOffset + 2] = new(O,   0, O); // 0 => 0
+                verts[vertOffset + 3] = new(I,   0, O); // 1 => 1
                 vertOffset += 4;
             }
 
