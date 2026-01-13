@@ -14,7 +14,8 @@ namespace CraftSharp.Resource
             new("block/lava_flow")
         };
 
-        private static readonly Vector4 FULL = new(0, 0, 1, 1);
+        private static readonly Vector4 FULL_STILL = new(0, 0, 1, 1);
+        private static readonly Vector4 FULL_FLOW = new(0.25F, 0.25F, 0.75F, 0.75F);
 
         // Add a subtle offset to sides of water to avoid z-fighting
         private const float O = 0F;
@@ -25,6 +26,23 @@ namespace CraftSharp.Resource
             return CubeGeometry.VertexCountMap[cullFlags];
         }
 
+        private static float3 GetUVPosInFace(float faceU, float faceV, float3[] fullUVs)
+        {
+            var u = faceU * (fullUVs[1].x - fullUVs[0].x);
+            var v = faceV * (fullUVs[2].y - fullUVs[0].y);
+            return new float3(fullUVs[0].x + u, fullUVs[0].y + v, fullUVs[0].z);
+        }
+
+        private static float3[] GetLiquidSideUVs(float leftHeight, float rightHeight, float3[] fullUVs)
+        {
+            return new float3[]
+            {
+                GetUVPosInFace(0F, 1F - leftHeight, fullUVs),  // Top Left
+                GetUVPosInFace(1F, 1F - rightHeight, fullUVs),  // Top Right
+                GetUVPosInFace(0F, 1F, fullUVs),  // Bottom Left
+                GetUVPosInFace(1F, 1F, fullUVs), // Bottom Right
+            };
+        }
         public static void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation liquidStill,
                 ResourceLocation liquidFlow, ReadOnlySpan<float> cornerHeights, int cullFlags, byte[] blockLights, int fluidColorInt)
         {
@@ -48,8 +66,8 @@ namespace CraftSharp.Resource
             var uvans = buffer.uvan;
             var tints = buffer.tint;
 
-            var (stillFullUVs, stillAnim) = ResourcePackManager.Instance.GetUVs(liquidStill, FULL, 0);
-            var (flowFullUVs, flowAnim) = ResourcePackManager.Instance.GetUVs(liquidFlow, FULL, 0);
+            var (stillFullUVs, stillAnim) = ResourcePackManager.Instance.GetUVs(liquidStill, FULL_STILL, 0);
+            var (flowFullUVs, flowAnim) = ResourcePackManager.Instance.GetUVs(liquidFlow, FULL_FLOW, 0);
 
             float4[] stillUVAnims = { stillAnim, stillAnim, stillAnim, stillAnim };
             float4[] flowUVAnims = { flowAnim, flowAnim, flowAnim, flowAnim };
@@ -82,7 +100,7 @@ namespace CraftSharp.Resource
                 verts[vertOffset + 1] = new(I, hse, I); // 5 => 2
                 verts[vertOffset + 2] = new(I,   0, O); // 1 => 0
                 verts[vertOffset + 3] = new(I,   0, I); // 6 => 3
-                flowFullUVs.CopyTo(txuvs, vertOffset);
+                GetLiquidSideUVs(hsw, hse, flowFullUVs).CopyTo(txuvs, vertOffset);
                 flowUVAnims.CopyTo(uvans, vertOffset);
                 vertOffset += 4;
             }
@@ -93,7 +111,7 @@ namespace CraftSharp.Resource
                 verts[vertOffset + 1] = new(O, hnw, O); // 3 => 1
                 verts[vertOffset + 2] = new(O,   0, I); // 7 => 3
                 verts[vertOffset + 3] = new(O,   0, O); // 0 => 0
-                flowFullUVs.CopyTo(txuvs, vertOffset);
+                GetLiquidSideUVs(hne, hnw, flowFullUVs).CopyTo(txuvs, vertOffset);
                 flowUVAnims.CopyTo(uvans, vertOffset);
                 vertOffset += 4;
             }
@@ -104,7 +122,7 @@ namespace CraftSharp.Resource
                 verts[vertOffset + 1] = new(O, hne, I); // 4 => 0
                 verts[vertOffset + 2] = new(I,   0, I); // 6 => 2
                 verts[vertOffset + 3] = new(O,   0, I); // 7 => 3
-                flowFullUVs.CopyTo(txuvs, vertOffset);
+                GetLiquidSideUVs(hse, hne, flowFullUVs).CopyTo(txuvs, vertOffset);
                 flowUVAnims.CopyTo(uvans, vertOffset);
                 vertOffset += 4;
             }
@@ -115,7 +133,7 @@ namespace CraftSharp.Resource
                 verts[vertOffset + 1] = new(I, hsw, O); // 2 => 2
                 verts[vertOffset + 2] = new(O,   0, O); // 0 => 0
                 verts[vertOffset + 3] = new(I,   0, O); // 1 => 1
-                flowFullUVs.CopyTo(txuvs, vertOffset);
+                GetLiquidSideUVs(hnw, hsw, flowFullUVs).CopyTo(txuvs, vertOffset);
                 flowUVAnims.CopyTo(uvans, vertOffset);
                 vertOffset += 4;
             }
