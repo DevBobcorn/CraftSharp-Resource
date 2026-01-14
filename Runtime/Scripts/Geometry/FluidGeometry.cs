@@ -43,6 +43,71 @@ namespace CraftSharp.Resource
                 GetUVPosInFace(1F, 1F, fullUVs), // Bottom Right
             };
         }
+
+        private static float3[] GetRotatedLiquidTopUVs(float angleDegrees, float3[] fullUVs)
+        {
+            float3[] result = new float3[4];
+            // Calculate center
+            float centerU = 0f;
+            float centerV = 0f;
+            for (int i = 0; i < 4; i++)
+            {
+                centerU += fullUVs[i].x;
+                centerV += fullUVs[i].y;
+            }
+            centerU /= 4F;
+            centerV /= 4F;
+            float radians = angleDegrees * math.PI / 180F;
+            float cosTheta = math.cos(radians);
+            float sinTheta = math.sin(radians);
+            for (int i = 0; i < 4; i++)
+            {
+                float u = fullUVs[i].x;
+                float v = fullUVs[i].y;
+                float du = u - centerU;
+                float dv = -(v - centerV);
+                float newU = centerU + du * cosTheta - dv * sinTheta;
+                float newV = centerV + du * sinTheta + dv * cosTheta;
+                result[i] = new float3(newU, newV, fullUVs[i].z);
+            }
+            return result;
+        }
+
+        private static (bool, float) GetFlowingAngle(float hne, float hse, float hnw, float hsw)
+        {
+            // Calculate average height of current block
+            float ownHeight = (hne + hse + hnw + hsw) / 4F;
+
+            // Calculate flow vector from height gradients
+            // Corner heights: hne (NE), hse (SE), hnw (NW), hsw (SW)
+
+            // Calculate average heights on each side
+            float eastAvg = (hne + hse) / 2F;   // East side
+            float westAvg = (hnw + hsw) / 2F;   // West side
+            float northAvg = (hne + hnw) / 2F;  // North side
+            float southAvg = (hse + hsw) / 2F;  // South side
+
+            // If east is higher than west, flow goes east
+            // If west is higher than east, flow goes west
+            float flowEW = eastAvg - westAvg;
+
+            // If north is higher than south, flow goes north
+            // If south is higher than north, flow goes south
+            float flowNS = southAvg - northAvg;
+
+            // If no flow gradient, return -1 (no rotation)
+            if (math.abs(flowEW) < 0.001F && math.abs(flowNS) < 0.001F) return (false, 0F);
+
+            // Calculate angle from flow vector to (0, -1) direction (north)
+            float angleRadians = math.atan2(flowEW, flowNS);
+            float angleDegrees = angleRadians * 180F / math.PI;
+
+            // Coordinate system conversion
+            angleDegrees += 90F;
+
+            return (true, angleDegrees);
+        }
+
         public static void Build(VertexBuffer buffer, ref uint vertOffset, float3 posOffset, ResourceLocation liquidStill,
                 ResourceLocation liquidFlow, ReadOnlySpan<float> cornerHeights, int cullFlags, byte[] blockLights, int fluidColorInt)
         {
@@ -72,14 +137,24 @@ namespace CraftSharp.Resource
             float4[] stillUVAnims = { stillAnim, stillAnim, stillAnim, stillAnim };
             float4[] flowUVAnims = { flowAnim, flowAnim, flowAnim, flowAnim };
 
+            var (hasFlow, angle) = GetFlowingAngle(hne, hse, hnw, hsw);
+
             if ((cullFlags & (1 << 0)) != 0) // Up
             {
                 verts[vertOffset]     = new(0, hne, 1); // 4 => 2
                 verts[vertOffset + 1] = new(1, hse, 1); // 5 => 3
                 verts[vertOffset + 2] = new(0, hnw, 0); // 3 => 1
                 verts[vertOffset + 3] = new(1, hsw, 0); // 2 => 0
-                stillFullUVs.CopyTo(txuvs, vertOffset);
-                stillUVAnims.CopyTo(uvans, vertOffset);
+                if (!hasFlow) // Use still texture for top
+                {
+                    stillFullUVs.CopyTo(txuvs, vertOffset);
+                    stillUVAnims.CopyTo(uvans, vertOffset);
+                }
+                else // Use flow texture for top
+                {
+                    GetRotatedLiquidTopUVs(angle, flowFullUVs).CopyTo(txuvs, vertOffset);
+                    flowUVAnims.CopyTo(uvans, vertOffset);
+                }
                 vertOffset += 4;
             }
 
