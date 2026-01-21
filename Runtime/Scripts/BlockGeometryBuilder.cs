@@ -82,8 +82,14 @@ namespace CraftSharp.Resource
                 new float3(mx, my, lz), new float3(mx, my, mz)
             };
 
-            if (elem.rotAngle != 0F) // Apply model rotation...
-                Rotations.RotateVertices(ref elemVerts, elem.pivot / MC_VERT_SCALE, elem.axis, -elem.rotAngle, elem.rescale); // TODO Check angle
+            if (elem.rotAngle != 0F) // Apply rotation for one axis...
+            {
+                Rotations.RotateVertices(ref elemVerts, elem.pivot / MC_VERT_SCALE, elem.axis, -elem.rotAngle, elem.rescale);
+            }
+            else if (elem.rotAngleXYZ != float3.zero) // Apply rotation for multiple axes...
+            {
+                Rotations.RotateVerticesXYZ(ref elemVerts, elem.pivot / MC_VERT_SCALE, -elem.rotAngleXYZ, elem.rescale);
+            }
             
             bool stateRotated = zyRot.x != 0 || zyRot.y != 0;
 

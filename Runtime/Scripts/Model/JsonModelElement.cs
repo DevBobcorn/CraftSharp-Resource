@@ -12,9 +12,14 @@ namespace CraftSharp.Resource
         public static readonly float3 CENTER = new( 8,  8,  8);
 
         public float3 from = float3.zero, to = FULL, pivot = CENTER;
-        public Dictionary<FaceDir, BlockModelFace> faces = new();
+        public Dictionary<FaceDir, BlockModelFace> faces = [];
+        // In 25w46a, rotation angle definition for multiple axes is introduced:
+        // Single axis rotation:
         public float rotAngle = 0F;
         public Rotations.Axis axis;
+        // Multiple axis rotation:
+        public float3 rotAngleXYZ = float3.zero;
+
         public bool rescale = false;
 
         public static JsonModelElement FromJson(Json.JSONData data)
@@ -55,6 +60,19 @@ namespace CraftSharp.Resource
                         
                         // We don't need a restriction to the value here like vanilla Minecraft...
                         float.TryParse(rotData.Properties["angle"].StringValue, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out elem.rotAngle);
+
+                        if (rotData.Properties.ContainsKey("rescale"))
+                            bool.TryParse(rotData.Properties["rescale"].StringValue, out elem.rescale);
+                    }
+                    else if (rotData.Properties.ContainsKey("origin") && (rotData.Properties.ContainsKey("x") || rotData.Properties.ContainsKey("y") || rotData.Properties.ContainsKey("z")))
+                    {
+                        // Read pivot position with xz values swapped...
+                        elem.pivot = VectorUtil.Json2SwappedFloat3(rotData.Properties["origin"]);
+                        elem.rotAngleXYZ = new float3(
+                            rotData.Properties.ContainsKey("x") ? float.Parse(rotData.Properties["x"].StringValue, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat) : 0F,
+                            rotData.Properties.ContainsKey("y") ? float.Parse(rotData.Properties["y"].StringValue, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat) : 0F,
+                            rotData.Properties.ContainsKey("z") ? float.Parse(rotData.Properties["z"].StringValue, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat) : 0F
+                        );
 
                         if (rotData.Properties.ContainsKey("rescale"))
                             bool.TryParse(rotData.Properties["rescale"].StringValue, out elem.rescale);

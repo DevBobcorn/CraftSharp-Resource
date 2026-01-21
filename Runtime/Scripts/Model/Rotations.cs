@@ -19,17 +19,6 @@ namespace CraftSharp.Resource
             X, Y, Z
         }
 
-        private static Dictionary<Axis, float3> MakeAxisVectors()
-        {
-            var vectors = new Dictionary<Axis, float3>
-            {
-                { Axis.X, Vector3.right },   // 1, 0, 0
-                { Axis.Y, Vector3.up },      // 0, 1, 0
-                { Axis.Z, Vector3.forward }  // 0, 0, 1
-            };
-            return vectors;
-        }
-
         // By default unity uses z-x-y order for euler angles, while
         // we use x-y-z order for our bedrock entity models, so we'll
         // do a bit conversion here
@@ -61,8 +50,6 @@ namespace CraftSharp.Resource
                 }
             }
         }
-
-        public static Dictionary<Axis, float3> axisVectors = MakeAxisVectors();
 
         // For Java Edition Block/Item models
         public static void RotateVertices(ref float3[] original, float3 pivot, Axis axis, float degree, bool rescale)
@@ -99,7 +86,7 @@ namespace CraftSharp.Resource
                             break;
                     }
                 }
-                original[i] = (float3)(rot * offset) + pivot; // TODO Make this better
+                original[i] = (float3)(rot * offset) + pivot; // TODO: Make this more efficient
             }
         }
 
