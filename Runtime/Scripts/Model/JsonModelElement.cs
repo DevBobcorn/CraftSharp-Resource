@@ -12,7 +12,7 @@ namespace CraftSharp.Resource
         public static readonly float3 CENTER = new( 8,  8,  8);
 
         public float3 from = float3.zero, to = FULL, pivot = CENTER;
-        public Dictionary<FaceDir, BlockModelFace> faces = [];
+        public Dictionary<FaceDir, BlockModelFace> faces = new();
         // In 25w46a, rotation angle definition for multiple axes is introduced:
         // Single axis rotation:
         public float rotAngle = 0F;
