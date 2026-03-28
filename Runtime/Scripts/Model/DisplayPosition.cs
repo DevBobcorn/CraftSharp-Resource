@@ -10,6 +10,7 @@ namespace CraftSharp.Resource
         Head,
         Fixed,
         Ground,
+        OnShelf,
         
         Unknown
     }
@@ -28,6 +29,7 @@ namespace CraftSharp.Resource
                 "head"                    => DisplayPosition.Head,
                 "fixed"                   => DisplayPosition.Fixed,
                 "ground"                  => DisplayPosition.Ground,
+                "on_shelf"                => DisplayPosition.OnShelf,
 
                 _                         => DisplayPosition.Unknown
             };
