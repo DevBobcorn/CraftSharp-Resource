@@ -667,7 +667,13 @@ namespace CraftSharp.Resource
             {
                 int spriteCount = tex.height / tex.width;
 
-                var animJson = Json.ParseJson(File.ReadAllText($"{texFilePath}.mcmeta")).Properties["animation"];
+                var metaJson = Json.ParseJson(File.ReadAllText($"{texFilePath}.mcmeta"));
+
+                if (!metaJson.Properties.TryGetValue("animation", out var animJson))
+                {
+                    // Debug.LogWarning($"Animation not found in texture meta: {texFilePath}.mcmeta");
+                    return (tex, null);
+                }
 
                 int[] frames;
                 
